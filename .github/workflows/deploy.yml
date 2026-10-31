@@ -1,0 +1,201 @@
+# Reusable deploy workflow of the IT25A hosting platform.
+#
+# Call it from your repository (see examples/caller-deploy.yml). The deployer only accepts requests
+# whose OIDC token says that THIS file was running, so do not copy the steps into your own workflow.
+name: Deploy
+
+on:
+  workflow_call:
+
+env:
+  IT25A_API_URL: https://cd.it25a.de
+
+jobs:
+  # Finds out which version of this workflow is running, so that the scripts come from the same commit.
+  meta:
+    name: Prepare
+    # Pull requests from forks get neither an OIDC token nor secrets. Dependabot cannot request OIDC tokens.
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      ref: ${{ steps.ref.outputs.ref }}
+    steps:
+      - name: Find the workflow version
+        id: ref
+        shell: python3 {0}
+        run: |
+          import base64, json, os, sys, urllib.request
+
+          url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
+          if not url:
+              print("::error::No OIDC token available. Add 'id-token: write' to the permissions of the calling workflow.")
+              sys.exit(1)
+          request = urllib.request.Request(
+              url + "&audience=it25a-deployer",
+              headers={"Authorization": "bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]},
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              token = json.load(response)["value"]
+          payload = token.split(".")[1]
+          claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+          ref = claims.get("job_workflow_sha") or claims["job_workflow_ref"].split("@", 1)[1]
+          print("Using deploy-workflows at", ref)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("ref=" + ref + "\n")
+
+  plan:
+    name: Plan
+    needs: meta
+    if: github.event_name != 'pull_request' || github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has_builds: ${{ steps.plan.outputs.has_builds }}
+      images: ${{ steps.plan.outputs.images }}
+      secrets: ${{ steps.plan.outputs.secrets }}
+      compose: ${{ steps.plan.outputs.compose }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the deploy scripts
+        uses: actions/checkout@v4
+        with:
+          repository: IT25A/deploy-workflows
+          ref: ${{ needs.meta.outputs.ref }}
+          path: .it25a-workflows
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            schema
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: .it25a-workflows/scripts/requirements.txt
+
+      - run: pip install -r .it25a-workflows/scripts/requirements.txt
+
+      - name: Validate the manifest and plan the deployment
+        id: plan
+        run: python .it25a-workflows/scripts/it25a_ci.py plan
+
+  build:
+    name: Build ${{ matrix.service }}
+    needs: [meta, plan]
+    if: needs.plan.outputs.has_builds == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          build-args: ${{ matrix.build_args }}
+          push: true
+          tags: ${{ matrix.image }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: Deploy
+    needs: [meta, plan, build]
+    # `build` is skipped when every service comes from the Compose file.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && contains(fromJSON('["success","skipped"]'), needs.build.result) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ github.event_name == 'pull_request' && 'preview' || 'production' }}
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the deploy scripts
+        uses: actions/checkout@v4
+        with:
+          repository: IT25A/deploy-workflows
+          ref: ${{ needs.meta.outputs.ref }}
+          path: .it25a-workflows
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+
+      - name: Deploy
+        id: deploy
+        env:
+          IT25A_IMAGES: ${{ needs.plan.outputs.images }}
+          IT25A_SECRET_NAMES: ${{ needs.plan.outputs.secrets }}
+          IT25A_COMPOSE_PATH: ${{ needs.plan.outputs.compose }}
+          # The script passes on only the secrets that it25a.yml declares.
+          IT25A_SECRETS: ${{ toJSON(secrets) }}
+        run: python3 .it25a-workflows/scripts/it25a_ci.py deploy
+
+  cleanup:
+    name: Remove preview
+    needs: meta
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      deployments: write
+    steps:
+      - name: Check out the deploy scripts
+        uses: actions/checkout@v4
+        with:
+          repository: IT25A/deploy-workflows
+          ref: ${{ needs.meta.outputs.ref }}
+          path: .it25a-workflows
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+
+      - name: Remove the preview from the server
+        run: python3 .it25a-workflows/scripts/it25a_ci.py cleanup
+
+      - name: Mark GitHub deployments as inactive
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const { ref, sha } = context.payload.pull_request.head;
+            try {
+              const { data } = await github.rest.repos.listDeployments({
+                owner, repo, environment: 'preview', per_page: 100,
+              });
+              for (const d of data.filter(d => d.ref === ref || d.sha === sha)) {
+                await github.rest.repos.createDeploymentStatus({
+                  owner, repo, deployment_id: d.id, state: 'inactive',
+                });
+              }
+            } catch (e) {
+              core.warning(`Could not deactivate the GitHub deployments: ${e.message}`);
+            }

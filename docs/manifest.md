@@ -63,7 +63,7 @@ In `environment` and `build.args` you can have values filled in:
 
 ## Variables in the Compose file (mode C)
 
-The platform writes an `.env` file that Compose substitutes at startup:
+The platform fills in these variables in your Compose file before it starts (`$$` gives a literal `$`; a variable without a value and without a default is an error):
 
 | Variable | Content |
 |---|---|
@@ -95,7 +95,7 @@ Which public images are allowed (for example `postgres`, `redis`) is defined by 
 
 ## Secrets
 
-1. Create the secret in GitHub (repository, Settings, Secrets and variables, Actions). To separate preview and production, use environments (`preview`, `production`).
+1. Create the secret in GitHub (repository, Settings, Secrets and variables, Actions) as a **repository secret**. Secrets that are stored in an environment (`preview`, `production`) are not guaranteed to reach the reusable workflow; use them only after you have tested it.
 2. Add the name under `secrets` of the service.
 3. The workflow passes on only the declared secrets. All others stay in GitHub.
 
@@ -109,3 +109,11 @@ python scripts/validate_manifest.py it25a.yml
 ```
 
 The script checks the schema, build folders and Dockerfiles, routing conflicts and placeholders. The deploy workflow runs the same validation before the build.
+
+## Images
+
+The workflow builds every service with `build` and pushes it to `ghcr.io/<owner>/<repo>/<service>:<tag>`.
+The tag is unique per commit (`main-<sha>` or `pr<number>-<sha>`), so the deployer can start the previous version again if an update fails.
+Build layers are cached between runs (GitHub Actions cache, one cache per service).
+The deployer pulls the images without a login, so the packages must be public: if the first deployment fails with "denied" or "unauthorized" while pulling,
+open the package on GitHub (profile or organization, Packages) and set its visibility to public once.
