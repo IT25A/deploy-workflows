@@ -187,9 +187,11 @@ def test_deploy_sends_compose_file(stub, tmp_path, monkeypatch):
 
 
 def test_cleanup(stub, monkeypatch):
+    monkeypatch.setenv("IT25A_PR_NUMBER", "7")
     stub.reply("POST", "/v1/cleanup", (202, {"job_id": "c1", "project": "demo-pr7"}))
     stub.reply("GET", "/v1/jobs/c1", (200, {"status": "succeeded", "done": True, "logs": ["Removed"], "next": 1}))
     assert run("cleanup", "--api-url", stub.url) == 0
+    assert stub.requests[0][2] == {"pr_number": 7}
 
 
 def test_cleanup_tolerates_unknown_preview(stub):

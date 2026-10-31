@@ -307,8 +307,14 @@ def cmd_deploy(args: argparse.Namespace) -> None:
 
 
 def cmd_cleanup(args: argparse.Namespace) -> None:
+    # After a merge, GitHub sets the ref of a closed pull request to the base branch, so the deployer
+    # cannot read the number from the token. The workflow passes it explicitly.
+    body: dict[str, Any] = {}
+    number = os.getenv("IT25A_PR_NUMBER", "").strip()
+    if number.isdigit():
+        body["pr_number"] = int(number)
     api = Api(args.api_url)
-    status, payload = api.call("POST", "/v1/cleanup", {})
+    status, payload = api.call("POST", "/v1/cleanup", body)
     if status == 404:
         print(f"Nothing to clean up: {payload.get('error', 'no deployment found')}")
         return

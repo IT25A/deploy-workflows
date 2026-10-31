@@ -179,6 +179,9 @@ jobs:
             scripts
 
       - name: Remove the preview from the server
+        env:
+          # After a merge the signed ref points to the base branch, so the number is passed explicitly.
+          IT25A_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python3 .it25a-workflows/scripts/it25a_ci.py cleanup
 
       - name: Mark GitHub deployments as inactive
