@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json
+# One domain: /api goes to the backend, everything else to the frontend
+version: 1
+services:
+  web:
+    build:
+      context: ./frontend
+      args:
+        PUBLIC_API_URL: "{{ url.api }}"   # https://<alias>.apps.it25a.de/api
+    port: 3000
+    route: { host: "@" }                  # catch-all
+  api:
+    build: ./backend
+    port: 3001
+    route: { host: "@", path: /api }      # the /api prefix is kept
+    secrets: [API_KEY]

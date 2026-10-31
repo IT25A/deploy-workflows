@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/IT25A/deploy-workflows/schema/it25a.schema.json",
+  "title": "IT25A app manifest (it25a.yml, version 1)",
+  "description": "Describes which services of an app are built, how they are reachable and which secrets they need.",
+  "type": "object",
+  "required": ["version", "services"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "compose": {
+      "description": "Optional custom Compose file (relative to the repository root) for additional services such as databases.",
+      "allOf": [
+        { "$ref": "#/$defs/path" },
+        { "pattern": "\\.ya?ml$" }
+      ]
+    },
+    "services": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 10,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]{0,29}$" },
+      "additionalProperties": { "$ref": "#/$defs/service" }
+    }
+  },
+  "if": { "not": { "required": ["compose"] } },
+  "then": {
+    "properties": {
+      "services": { "additionalProperties": { "required": ["build"] } }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "maxLength": 200,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$",
+      "description": "Relative path without a leading slash and without '..'."
+    },
+    "envName": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
+    },
+    "secretName": {
+      "type": "string",
+      "pattern": "^(?!IT25A_|GITHUB_|IMAGE_|URL_|HOST_|FQDN|PROJECT_NAME$|COMPOSE_|DOCKER_|PATH$|HOME$)[A-Z_][A-Z0-9_]{0,63}$",
+      "description": "Name of a GitHub secret (uppercase letters, digits, underscores). Reserved prefixes are not allowed."
+    },
+    "buildObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": { "$ref": "#/$defs/path", "default": "." },
+        "dockerfile": {
+          "$ref": "#/$defs/path",
+          "default": "Dockerfile",
+          "description": "Relative to the build context."
+        },
+        "target": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+        "args": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/envName" },
+          "additionalProperties": { "type": "string", "maxLength": 1000 },
+          "description": "Build arguments. Placeholders such as {{ url.api }} are allowed."
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "required": ["host"],
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string",
+          "pattern": "^(?:@|[a-z][a-z0-9-]{0,29})$",
+          "description": "@ = <alias>.apps.it25a.de, otherwise <host>-<alias>.apps.it25a.de."
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/[a-z0-9._~-]+(?:/[a-z0-9._~-]+)*$",
+          "description": "Optional path prefix, for example /api. Without a path, the service catches all remaining requests of the host."
+        },
+        "strip_prefix": {
+          "type": "boolean",
+          "default": false,
+          "description": "Remove the path prefix before forwarding the request to the service."
+        }
+      },
+      "dependentRequired": { "strip_prefix": ["path"] }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "anyOf": [
+            { "$ref": "#/$defs/path" },
+            { "$ref": "#/$defs/buildObject" }
+          ],
+          "description": "Build context (path) or an object with context, dockerfile, target and args."
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 3000,
+          "description": "Port the service listens on inside the container."
+        },
+        "route": { "$ref": "#/$defs/route" },
+        "environment": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/envName" },
+          "additionalProperties": { "type": "string", "maxLength": 1000 },
+          "description": "Non-secret environment variables. Placeholders such as {{ url.api }} are allowed."
+        },
+        "secrets": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 30,
+          "items": { "$ref": "#/$defs/secretName" },
+          "description": "Names of GitHub secrets that are passed to the service as environment variables."
+        }
+      }
+    }
+  }
+}
