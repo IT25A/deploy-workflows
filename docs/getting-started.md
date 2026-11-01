@@ -23,10 +23,10 @@ you push to GitHub ──► GitHub builds your app into a "container image" ─
 | `.github/workflows/deploy.yml` | your repository | **Always.** Copy it, do not change it. |
 | Entry in `apps.json` | repository [`IT25A/apps-registry`](https://github.com/IT25A/apps-registry) | **Always.** A maintainer approves it. |
 | `it25a.yml` | root of your repository | Only if: your app has **several parts** (for example frontend and backend), uses **a port other than 3000**, or needs **secrets** (passwords, API keys). |
-| `docker-compose.yml` | root of your repository | Only if you need a **database** or another extra service. |
+| `docker-compose.yml` | root of your repository | Only if you need a **database in its own container** (PostgreSQL, Redis, ...) **or files that must survive updates**, for example a **SQLite file** or uploaded files (see step 1). |
 | GitHub secrets | repository settings | Only if the app has passwords or API keys. |
 
-You do **not** need: a `docker-compose.yml` for a single app, a `.env` file in the repository, port mappings, or anything on a server.
+You do **not** need: a `docker-compose.yml` for an app that keeps nothing on disk, a `.env` file with real values in the repository, port mappings, or anything on a server.
 
 ## Step 0: Check your project
 
@@ -43,7 +43,10 @@ You do **not** need: a `docker-compose.yml` for a single app, a `.env` file in t
 | **One app** (one repository, one start command, for example a SvelteKit app or an Express app that also serves its pages) | `Dockerfile`. Nothing else. Frontend only: [`react-only`](../examples/react-only/) |
 | **One app with secrets** or a port other than 3000 | `Dockerfile` and a short `it25a.yml` (step 5). C++ or another language: [`cpp`](../examples/cpp/) |
 | **Frontend and backend** in one repository | One `Dockerfile` per part, and an `it25a.yml`. Complete example: [`react-express`](../examples/react-express/) |
-| **A database** | The above, plus a `docker-compose.yml`. Complete examples: [`sveltekit-sqlite`](../examples/sveltekit-sqlite/) (SQLite file in a volume), [`sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/) (PostgreSQL, secrets, login), [`react-express-postgres`](../examples/react-express-postgres/) (frontend, backend and database) |
+| **SQLite** (or any other file the app writes and that must stay) | The above, **plus a `docker-compose.yml`** that attaches a volume. Even though the database is "built into" your app. Complete examples: [`sveltekit-sqlite`](../examples/sveltekit-sqlite/), [`react-express-sqlite`](../examples/react-express-sqlite/) |
+| **A database of its own** (PostgreSQL, Redis, ...) | The above, plus a `docker-compose.yml` that starts the database. Complete examples: [`sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/) (PostgreSQL, secrets, login), [`react-express-postgres`](../examples/react-express-postgres/) (frontend, backend and database) |
+
+> **Why does SQLite need a `docker-compose.yml`?** Every update starts a **new container** and throws the old one away, together with every file that the app wrote inside it. A SQLite database is just a file, so without more it would be empty after each update. The `docker-compose.yml` attaches a **volume**: a folder that lives outside the container and survives updates, restarts and new versions. Your app stores the database file there. The same applies to uploaded files. A real database server such as PostgreSQL runs in its own container and needs such a volume too.
 
 Most projects start with the first row. **Every example is a complete set of files that you can copy** and adapt: see the [overview of the examples](../examples/README.md). Read on; the other rows only change step 2 and step 5.
 
@@ -66,14 +69,33 @@ The file must be called exactly **`Dockerfile`** (capital D, no ending) and lies
 ### How to read a Dockerfile
 
 ```dockerfile
-FROM node:22-alpine              # start from a small Linux with Node.js 22
-WORKDIR /app                     # work in the folder /app inside the container
+# Start from a small Linux that already has Node.js 26 (the current long-term support version).
+FROM node:26-alpine
+
+# Work in the folder /app inside the container (it is created if it does not exist).
+WORKDIR /app
+
+# Copy ONLY the two package files into the container first. The first path is a file in your
+# repository, the last one is the destination in the container ("./" is the current folder /app).
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev            # install the dependencies
-COPY . .                         # copy the rest of your project
-ENV PORT=3000                    # the app should listen on this port
-CMD ["npm", "start"]             # the command that starts the app
+
+# Install the dependencies that these two files list.
+RUN npm ci --omit=dev
+
+# Now copy everything else: your source code and all other files of the project.
+# (Files listed in .dockerignore, for example node_modules, are left out.)
+COPY . .
+
+# The app should listen on this port.
+ENV PORT=3000
+
+# The command that starts the app.
+CMD ["npm", "start"]
 ```
+
+(Comments in a Dockerfile must be on their own line starting with `#`. A `#` behind an instruction is not a comment and breaks the build.)
+
+**Why are there two `COPY` lines?** Docker remembers the result of every line (a *layer*) and reuses it when nothing it depends on has changed. Installing the dependencies is the slow part. If only the two package files are copied before `npm ci`, Docker repeats the installation only when you change your dependencies; when you change a source file, only the last `COPY` runs again. In bigger projects the last `COPY` often copies only selected folders (`COPY src ./src`), or the project is built first and only the result is copied, as in the SvelteKit template.
 
 You will rarely change more than the last line (the start command) and the port.
 
@@ -96,7 +118,10 @@ Then open `http://localhost:3000`. If you do not have Docker, skip this: the pul
 | Build fails at `npm ci` | `package-lock.json` is missing in Git, or it does not match `package.json`. Run `npm install` locally and commit the lock file. |
 | `npm start` is missing | Add `"start": "node index.js"` (your start file) under `scripts` in `package.json`. |
 | The Dockerfile is not found | The file name is spelled wrong (`dockerfile`, `Dockerfile.txt`) or it is not in the root. |
+| The app cannot write a file: `EACCES`, `Permission denied`, `SQLITE_CANTOPEN`, the container is "unhealthy" | The container runs as the unprivileged user `node`, who may only write to folders that belong to `node`. Create the folder in the Dockerfile **before** `USER node` (`RUN mkdir -p /data && chown node:node /data`) and attach a volume at that path in `docker-compose.yml`. See [`react-express-sqlite`](../examples/react-express-sqlite/README.md). |
+| Build fails at `mkdir` with "Permission denied" | The line stands **after** `USER node`. From there on every command runs as `node`. Move it above `USER node`. |
 | The app needs a `.env` file | Files like `.env` are not part of the build. Read the values from environment variables and use secrets (step 5). |
+| SvelteKit: the build fails because variables from `src/env.ts` are missing | SvelteKit 3 checks the variables when it builds. Commit a `.env.example` with harmless dummy values and let the Dockerfile copy it for the build, as in the [SvelteKit examples](../examples/sveltekit-sqlite/README.md). |
 
 ## Step 3: Register the repository
 
@@ -156,7 +181,7 @@ Skip this step if your app needs neither secrets nor a special port.
    - `port` is the port your app listens on.
    - `route: { host: "@" }` makes the app reachable at `<alias>.apps.it25a.de`. Without `route` the app runs but nobody can open it.
    - `secrets` lists the **names** of your GitHub secrets. Only listed secrets are passed on.
-3. Your app reads each secret as an environment variable **at runtime** (Node.js: `process.env.SESSION_SECRET`; SvelteKit: `$env/dynamic/private`).
+3. Your app reads each secret as an environment variable **at runtime** (Node.js: `process.env.SESSION_SECRET`; SvelteKit 3: declared in `src/env.ts` and imported from `$app/env/private`, see the [SvelteKit examples](../examples/sveltekit-sqlite/README.md); older SvelteKit: `$env/dynamic/private`).
 
 Several parts or a database? Start from an [example](../examples/README.md) and read [`manifest.md`](manifest.md).
 
@@ -189,7 +214,7 @@ Every message appears in the log of the **Deploy** job (Actions tab, click the r
 | `denied` / `unauthorized` while pulling | The image is still private | Step 6, point 3 |
 | `Preview environments are disabled` | `previews` is `false` in the registry | Change it there, or merge to `main` |
 | An error in **Plan** about `it25a.yml` or the Compose file | Something in your configuration is not allowed | Read the message; it names the line. Fix the file and push again |
-| `unhealthy` | The Dockerfile has a `HEALTHCHECK`, but your app does not answer on the route it asks (for example `/health`) | Add the route (see the example's README) or remove the `HEALTHCHECK` lines. The old version keeps running meanwhile |
+| `unhealthy`, or `Restarting` in the container list | The app does not start, or it does not answer the route that the `HEALTHCHECK` of the Dockerfile asks (for example `/health`) | Read the log lines **below** the message: those that start with the service name (for example `api-1  \|`) are the output of your container and show the real error. If the app only lacks the route, add it (see the example's README) or remove the `HEALTHCHECK` lines. The old version keeps running meanwhile |
 | The **Build** stage fails | The Dockerfile or the app build is broken | Read the log of the failing step; it is the same output as `docker build` on your computer |
 
 **You do not have to check your configuration locally.** The *Plan* stage validates `it25a.yml` on every push and pull request before anything is built or started, and the registry pull request has its own check.

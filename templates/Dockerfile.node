@@ -19,6 +19,9 @@ RUN npm ci --omit=dev
 # Step 2: copy the rest of your project (the files listed in .dockerignore are left out).
 COPY . .
 
+# If your app writes files (a database file, uploads), create the folder here, BEFORE any "USER node" line:
+#   RUN mkdir -p /data && chown node:node /data
+# and attach a volume at that path in docker-compose.yml (see examples/react-express-sqlite).
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000

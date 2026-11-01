@@ -10,6 +10,7 @@ Besides these files every project needs the same two things, which are not repea
 |---|---|---|
 | A **React** (or Vue, Svelte) frontend only, no server of my own | [`react-only/`](react-only/) | `Dockerfile` |
 | A **React frontend with an Express backend** (two folders, one repository) | [`react-express/`](react-express/) | `it25a.yml`, a `Dockerfile` per folder |
+| A **React frontend with an Express backend and an SQLite** database file | [`react-express-sqlite/`](react-express-sqlite/) | `it25a.yml`, `docker-compose.yml`, a `Dockerfile` per folder |
 | A **React frontend, Express backend and PostgreSQL** database | [`react-express-postgres/`](react-express-postgres/) | `it25a.yml`, `docker-compose.yml`, a `Dockerfile` per folder |
 | **SvelteKit with an SQLite** database file | [`sveltekit-sqlite/`](sveltekit-sqlite/) | `Dockerfile`, `it25a.yml`, `docker-compose.yml`, `.env.example` |
 | **SvelteKit with PostgreSQL and OpenID Connect** login, with secrets and plain settings | [`sveltekit-postgres-oidc/`](sveltekit-postgres-oidc/) | `Dockerfile`, `it25a.yml`, `docker-compose.yml`, `.env.example`, `scripts/migrate.js`, `migrations/` |
@@ -22,7 +23,7 @@ Besides these files every project needs the same two things, which are not repea
 - **Plain settings and secrets side by side**, and values that change with every deployment (`{{ url.app }}` for the public address, which differs between production and every preview).
 - **SvelteKit 3 environment variables:** `src/env.ts` validates every setting when the app starts, and the Dockerfile builds with the dummy values from `.env.example`. The PostgreSQL example also runs database migrations at every start.
 - **Volumes**, so data survives updates (SQLite file, PostgreSQL data).
-- **Hardening:** the apps run as the unprivileged user `node` instead of root, and the Compose files drop all Linux capabilities (`cap_drop`), make the container's files read-only (`read_only`, with `/tmp` writable), start a small init process (`init`) and give running requests 20 seconds to finish when the container stops (`stop_grace_period`). If your app writes files outside `/tmp` and the volume, remove `read_only` or add a volume for that folder.
+- **Hardening:** the apps run as the unprivileged user `node` instead of root, and the Compose files drop all Linux capabilities (`cap_drop`), make the container's files read-only (`read_only`, with `/tmp` writable), start a small init process (`init`) and give running requests 20 seconds to finish when the container stops (`stop_grace_period`). If your app writes files outside `/tmp` and the volume, remove `read_only` or add a volume for that folder. **Every folder the app writes to must belong to `node`**: create it with `RUN mkdir -p ... && chown node:node ...` **before** the line `USER node`, otherwise the app fails with `EACCES` or `SQLITE_CANTOPEN`.
 - **Stopping cleanly:** on every update the old container receives `SIGTERM`. Apps that react to it finish their requests and close database connections instead of being killed after the grace period (snippet in [`react-express`](react-express/README.md)).
 
 Nothing fits exactly? Combine them. The pieces are independent: the database part of the SvelteKit example works for an Express backend as well, and the Dockerfile templates in [`../templates/`](../templates/) cover more frameworks.

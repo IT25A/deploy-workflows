@@ -56,6 +56,10 @@ export default defineConfig({
 });
 ```
 
+## Storing data
+
+The backend keeps no data between updates by itself. For an SQLite file see [`react-express-sqlite`](../react-express-sqlite/README.md), for PostgreSQL [`react-express-postgres`](../react-express-postgres/README.md).
+
 ## Stopping cleanly
 
 When a new version replaces the old one, the old container receives `SIGTERM`. Finish the running requests and exit:
