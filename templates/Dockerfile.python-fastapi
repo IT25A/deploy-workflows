@@ -1,0 +1,19 @@
+# FastAPI app. Save as "Dockerfile" in the root of your repository.
+#
+# Before you use it, check:
+#   - requirements.txt lists all packages, including "fastapi" and "uvicorn"
+#   - the app object is called "app" in main.py (otherwise change "main:app" below)
+
+FROM python:3.14-slim
+WORKDIR /app
+
+# Step 1: install the dependencies (copied first so Docker can reuse this step).
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Step 2: copy the rest of your project.
+COPY . .
+
+EXPOSE 3000
+# "--host 0.0.0.0" is required: with the default (127.0.0.1) the app cannot be reached from outside the container.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]

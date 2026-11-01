@@ -1,0 +1,19 @@
+# Files that must not be copied into the image. Save as ".dockerignore" next to your Dockerfile.
+.git
+.github
+node_modules
+.svelte-kit
+dist
+build
+__pycache__
+.venv
+venv
+*.log
+# Local configuration and secrets never belong into an image
+.env
+.env.*
+!.env.example
+# Local SQLite databases (the live database lives in a volume on the server)
+*.db
+*.sqlite
+*.sqlite3

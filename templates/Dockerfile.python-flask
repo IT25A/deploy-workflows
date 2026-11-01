@@ -1,0 +1,17 @@
+# Flask app. Save as "Dockerfile" in the root of your repository.
+#
+# Before you use it, check:
+#   - requirements.txt lists all packages, including "flask" and "gunicorn"
+#   - the Flask object is called "app" in app.py (otherwise change "app:app" below)
+
+FROM python:3.14-slim
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 3000
+# gunicorn is the production server for Flask ("flask run" is only meant for development).
+CMD ["gunicorn", "--bind", "0.0.0.0:3000", "app:app"]

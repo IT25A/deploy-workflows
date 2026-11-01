@@ -1,0 +1,27 @@
+# Plain Node.js app (Express, Fastify, Koa, ...). Save as "Dockerfile" in the root of your repository.
+#
+# Before you use it, check:
+#   - package.json has a "start" script (for example "start": "node index.js")
+#   - package-lock.json is committed to Git
+#   - your app listens on port 3000 (or on the port that the PORT variable contains)
+
+# The starting point: a small Linux with Node.js 26 already installed.
+FROM node:26-alpine
+
+# All following commands run in this folder inside the container.
+WORKDIR /app
+
+# Step 1: install the dependencies. Only the two package files are copied first, so Docker can
+# reuse this step as long as your dependencies do not change (faster builds).
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# Step 2: copy the rest of your project (the files listed in .dockerignore are left out).
+COPY . .
+
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+
+# Step 3: the command that starts your app.
+CMD ["npm", "start"]

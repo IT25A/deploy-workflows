@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json
+# Optional: without this file the platform would also start the program (zero-config, port 3000),
+# but you need the file as soon as you want to pass settings or secrets to the program.
+version: 1
+services:
+  app:
+    build: .
+    port: 3000
+    route: { host: "@" }
+    environment:
+      GREETING: Hello from C++ on the IT25A platform   # read in main.cpp with getenv("GREETING")

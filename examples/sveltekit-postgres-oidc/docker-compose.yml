@@ -1,0 +1,30 @@
+services:
+  # The app is defined in it25a.yml. Here only what Compose adds is listed.
+  app:
+    depends_on:
+      db:
+        condition: service_healthy   # start the app only when the database accepts connections
+    # Hardening, recommended for every app. Remove a line only if your app really needs it:
+    init: true               # a tiny init process forwards signals and cleans up child processes
+    cap_drop: [ALL]          # the app needs no special Linux privileges
+    read_only: true          # the files of the container cannot be changed; only /tmp stays writable
+    tmpfs: [/tmp]
+    stop_grace_period: 20s   # time to finish running requests when the container is stopped
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: notes             # your own database name (the same as POSTGRES_DB in it25a.yml)
+      POSTGRES_USER: notes_app       # your own database user (the same as POSTGRES_USER in it25a.yml)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}   # the secret from GitHub
+    volumes:
+      - db-data:/var/lib/postgresql   # PostgreSQL 18 and newer keep their data below this folder
+    healthcheck:
+      # "$$" is a literal "$": the shell inside the container fills in the user and the database name.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:

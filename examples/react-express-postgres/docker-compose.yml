@@ -1,0 +1,30 @@
+services:
+  # The services "web" and "api" are defined in it25a.yml. Here only what Compose adds is listed.
+  api:
+    depends_on:
+      db:
+        condition: service_healthy   # start the backend only when the database accepts connections
+    # Hardening, recommended for every app. Remove a line only if your app really needs it:
+    init: true               # a tiny init process forwards signals and cleans up child processes
+    cap_drop: [ALL]          # the app needs no special Linux privileges
+    read_only: true          # the files of the container cannot be changed; only /tmp stays writable
+    tmpfs: [/tmp]
+    stop_grace_period: 20s   # time to finish running requests when the container is stopped
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: shop              # your own database name (same as DB_NAME in it25a.yml)
+      POSTGRES_USER: shop_app        # your own database user (same as DB_USER in it25a.yml)
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql   # PostgreSQL 18 and newer keep their data below this folder
+    healthcheck:
+      # "$$" is a literal "$": the shell inside the container fills in the user and the database name.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:

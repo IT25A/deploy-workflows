@@ -1,0 +1,34 @@
+# SvelteKit app. Save as "Dockerfile" in the root of your repository.
+#
+# Before you use it, check:
+#   - svelte.config.js uses "@sveltejs/adapter-node" (npm install -D @sveltejs/adapter-node)
+#   - "npm run build" works on your computer and creates the folder "build"
+#   - package-lock.json is committed to Git
+#   - if you use src/env.ts (SvelteKit 3): ".env.example" is committed and has a value for every variable
+#     (without src/env.ts, delete the line "COPY .env.example .env")
+#   - all packages that the app needs at runtime are under "dependencies" in package.json
+
+# Stage 1 "build": install everything, build the project, then remove the development tools again.
+FROM node:26-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+# SvelteKit 3 checks the variables of src/env.ts while it builds, so they need values now.
+# The harmless dummy values come from .env.example; the real ones are set when the container starts.
+COPY .env.example .env
+RUN npm run build
+RUN npm prune --omit=dev
+
+# Stage 2: the final image only contains the built app and its runtime dependencies (no .env).
+FROM node:26-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+COPY --from=build /app/build ./build
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
+USER node
+EXPOSE 3000
+CMD ["node", "build"]

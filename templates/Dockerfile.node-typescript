@@ -1,0 +1,27 @@
+# Node.js app with a build step (TypeScript, NestJS, ...). Save as "Dockerfile" in the root of your repository.
+#
+# Before you use it, check:
+#   - "npm run build" works on your computer and creates the folder "dist"
+#   - package.json has a "start" script that runs the built code (for example "node dist/main.js")
+#   - package-lock.json is committed to Git
+#   - your app listens on port 3000
+
+# Stage 1 "build": install everything (including dev tools such as TypeScript) and build the project.
+FROM node:26-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: the final image only contains what is needed to run the app.
+FROM node:26-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY --from=build /app/dist ./dist
+
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+CMD ["npm", "start"]

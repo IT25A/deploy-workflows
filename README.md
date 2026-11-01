@@ -5,9 +5,9 @@ Apps are deployed to `https://<alias>.apps.it25a.de`; every open pull request ge
 
 ## Deploy your repository
 
-New here? Read the step-by-step guide: [`docs/getting-started.md`](docs/getting-started.md).
+New here? Read the step-by-step guide: [`docs/getting-started.md`](docs/getting-started.md). It explains every file, has Dockerfile templates for common frameworks in [`templates/`](templates/) and complete example projects in [`examples/`](examples/README.md).
 
-1. Create the repository in the organization `IT25A` (a personal repository only after talking to the maintainers) and make it **public** and make sure it has a `Dockerfile` (listening on port 3000) or an [`it25a.yml`](docs/manifest.md).
+1. Create the repository in the organization `IT25A` (a personal repository only after talking to the maintainers) and make it **public**. Every project needs a `Dockerfile` (the app listens on port 3000). Add an [`it25a.yml`](docs/manifest.md) and a `docker-compose.yml` only when you need them; the guide explains when.
 2. Register it in [`IT25A/apps-registry`](https://github.com/IT25A/apps-registry) with a pull request. A maintainer merges it.
 3. Copy [`examples/caller-deploy.yml`](examples/caller-deploy.yml) to `.github/workflows/deploy.yml` in your repository.
 4. Create the secrets that your `it25a.yml` declares (repository secrets).

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json
+# SvelteKit app with a PostgreSQL database, OpenID Connect login, plain settings and secrets
+version: 1
+compose: docker-compose.yml          # defines the database, see docker-compose.yml
+services:
+  app:
+    build: .
+    port: 3000
+    route: { host: "@" }
+    # Plain settings (not secret; they are visible in your repository)
+    environment:
+      ORIGIN: "{{ url.app }}"                          # the public address of this deployment (production or preview)
+      OIDC_ISSUER: https://id.it25a.de                 # change to your identity provider
+      OIDC_CLIENT_ID: my-app                           # change to the client id of your app
+      POSTGRES_HOST: db                                # the name of the database service in docker-compose.yml
+      POSTGRES_PORT: "5432"                            # always in quotes
+      POSTGRES_DB: notes                               # must be the same as in docker-compose.yml
+      POSTGRES_USER: notes_app                         # must be the same as in docker-compose.yml
+    # Secrets: create each one in GitHub (repository, Settings, Secrets and variables, Actions)
+    secrets:
+      - OIDC_CLIENT_SECRET
+      - AUTH_SECRET
+      - POSTGRES_PASSWORD                              # also used by the database in docker-compose.yml

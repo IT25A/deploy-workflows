@@ -1,5 +1,7 @@
 # App manifest `it25a.yml`
 
+> New here? Start with the [step-by-step guide](getting-started.md). This page is the reference for all fields.
+
 The manifest describes which services of your app are built, how they are reachable and which secrets they need.
 It lives in the root of your repository. Without a manifest, zero-config mode applies.
 
@@ -11,7 +13,7 @@ It lives in the root of your repository. Without a manifest, zero-config mode ap
 | **B – Manifest** | `it25a.yml` | Any number of services (maximum 10), all built from source; the platform generates the Compose file |
 | **C – Manifest + Compose** | `it25a.yml` and `docker-compose.yml` | Additional services such as databases come from your Compose file |
 
-Examples are in `examples/`. Your editor knows the schema if the first line of the file looks like this:
+Complete example projects are in [`examples/`](../examples/README.md). Your editor knows the schema if the first line of the file looks like this (in VS Code this needs the extension **YAML** by Red Hat, `redhat.vscode-yaml`; without it the line is just a comment):
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json
@@ -64,6 +66,8 @@ In `environment` and `build.args` you can have values filled in:
 
 ## Variables in the Compose file (mode C)
 
+A service may appear in **both** files: `it25a.yml` says how it is built and published (`build`, `route`, `environment`, `secrets`), the Compose file adds what only Compose can express (`volumes`, `depends_on`, `healthcheck`, more `environment`). The two are merged; see [`examples/sveltekit-sqlite`](../examples/sveltekit-sqlite/).
+
 The platform fills in these variables in your Compose file before it starts (`$$` gives a literal `$`; a variable without a value and without a default is an error):
 
 | Variable | Content |
@@ -73,7 +77,7 @@ The platform fills in these variables in your Compose file before it starts (`$$
 | `${ALIAS}` | Alias of the app |
 | `${<SECRET>}` | every secret that any service declares under `secrets` |
 
-Example `docker-compose.yml` for the manifest `04-with-compose-db.yml`:
+Example `docker-compose.yml` (a complete project with a database is in [`examples/sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/)):
 
 ```yaml
 services:
@@ -81,18 +85,35 @@ services:
     image: ${IMAGE_API}
     depends_on: [db]
   db:
-    image: postgres:17
+    image: postgres:18
     environment:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql   # PostgreSQL 18 and newer; for 17 and older use /var/lib/postgresql/data
 
 volumes:
   db-data:
 ```
 
 The deployer validates your Compose file strictly. Not allowed are, among others, `privileged`, `ports`, host mounts, `docker.sock`, `network_mode` and custom routing labels.
-Which public images are allowed (for example `postgres`, `redis`) is defined by a list on the server. The platform generates routing from `route`.
+The platform generates routing from `route`.
+
+### Which images may I use?
+
+Your own services use `${IMAGE_<SERVICE>}`. For everything else only **official images from Docker Hub** from a list on the server are allowed. Currently:
+
+| Image | For | Data folder for the volume |
+|---|---|---|
+| `postgres` | PostgreSQL database | `/var/lib/postgresql` (version 18 and newer), `/var/lib/postgresql/data` (17 and older) |
+| `mysql`, `mariadb` | MySQL / MariaDB database | `/var/lib/mysql` |
+| `mongo` | MongoDB | `/data/db` |
+| `redis`, `valkey` | key-value store, cache | `/data` |
+| `memcached` | cache (keeps nothing on disk) | – |
+
+- Write the image with a version tag, for example `postgres:18` or `redis:8`, not `latest`: an update of the database program should never happen by accident.
+- Images from other users or registries (`someone/tool`, `ghcr.io/...`) are not allowed, and neither are other official images such as `nginx`. If you need another one, ask the maintainers; the list is a server setting.
+- The error message of a rejected image names the images that are currently allowed.
+- Every container, including the database, gets at most 512 MB of memory and half a CPU.
 
 ## Secrets
 
@@ -102,14 +123,17 @@ Which public images are allowed (for example `postgres`, `redis`) is defined by 
 
 Names with the prefixes `IT25A_`, `GITHUB_`, `IMAGE_`, `URL_`, `HOST_`, `COMPOSE_`, `DOCKER_` as well as `FQDN`, `PROJECT_NAME`, `PATH` and `HOME` are reserved.
 
-## Validate locally
+## Validation
+
+You do not have to run anything yourself: the *Plan* stage of the deploy workflow validates `it25a.yml` on every push and pull request, before anything is built or started. Errors appear in its log and name the field that is wrong.
+For hints while typing, add the `yaml-language-server` line from the top of this page to your file (VS Code with the YAML extension by Red Hat).
+
+The check is the script `scripts/validate_manifest.py` in this repository. Only if you want to run it on your computer, clone `IT25A/deploy-workflows` and run:
 
 ```bash
 pip install -r scripts/requirements.txt
-python scripts/validate_manifest.py it25a.yml
+python scripts/validate_manifest.py /path/to/your-repo/it25a.yml --repo-root /path/to/your-repo
 ```
-
-The script checks the schema, build folders and Dockerfiles, routing conflicts and placeholders. The deploy workflow runs the same validation before the build.
 
 ## Images
 

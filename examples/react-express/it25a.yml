@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json
+# React frontend and Express backend in one repository, on ONE address:
+#   https://<alias>.apps.it25a.de        -> frontend
+#   https://<alias>.apps.it25a.de/api    -> backend
+# The frontend calls "/api/..." without a host name, so no CORS settings are needed.
+version: 1
+services:
+  web:
+    build: ./frontend                # folder with the frontend's Dockerfile
+    port: 3000
+    route: { host: "@" }             # everything that is not /api
+  api:
+    build: ./backend                 # folder with the backend's Dockerfile
+    port: 3000
+    route: { host: "@", path: /api } # the /api prefix is kept: the backend sees /api/...
+    # secrets: [API_KEY]             # uncomment if the backend needs secrets
