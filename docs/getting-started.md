@@ -223,6 +223,13 @@ If you use VS Code with the YAML extension by Red Hat, add this line at the top 
 
 A failed **first** deployment leaves nothing behind, so you can simply fix and push again.
 
+## Take your app offline
+
+- **Previews** disappear by themselves when the pull request is closed or merged, or after 14 days.
+- **The production app** stays online until a maintainer takes it down. Ask them, and tell them whether your data (database, uploaded files) may be deleted: taking an app down **deletes its volumes**, so export what you want to keep first.
+- Afterwards the entry is removed from `apps-registry` with a pull request. Deleting only the entry does **not** stop the app.
+- Then delete `.github/workflows/deploy.yml` (or the repository) so no new deployments are tried, and delete the container packages on GitHub (the organization's *Packages* page) if you do not need them.
+
 ## Apps for course members only
 
 If you set `"production_access": "course"` (and for previews by default), visitors first see a short explanation, sign in, and come back to the page they wanted. Your app needs no login code. It receives two request headers:
