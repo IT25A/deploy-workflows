@@ -47,7 +47,7 @@ In mode C, `build` may be omitted if the service is defined in the Compose file.
 
 - Per host, at most one service without `path` is allowed (it accepts all remaining requests). Paths must be unique.
 - The alias comes from the registry (`apps-registry`), not from the manifest.
-- Production apps are public. Previews are reachable by course members only by default (setting `preview_access` in the registry).
+- Production apps are public by default (`production_access: public`). Set `production_access: course` in the registry to restrict them to course members. Previews are reachable by course members only by default (`preview_access`).
 
 ## Placeholders
 
