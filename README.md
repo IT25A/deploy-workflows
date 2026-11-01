@@ -5,7 +5,9 @@ Apps are deployed to `https://<alias>.apps.it25a.de`; every open pull request ge
 
 ## Deploy your repository
 
-1. Make the repository **public** and make sure it has a `Dockerfile` (listening on port 3000) or an [`it25a.yml`](docs/manifest.md).
+New here? Read the step-by-step guide: [`docs/getting-started.md`](docs/getting-started.md).
+
+1. Create the repository in the organization `IT25A` (a personal repository only after talking to the maintainers) and make it **public** and make sure it has a `Dockerfile` (listening on port 3000) or an [`it25a.yml`](docs/manifest.md).
 2. Register it in [`IT25A/apps-registry`](https://github.com/IT25A/apps-registry) with a pull request. A maintainer merges it.
 3. Copy [`examples/caller-deploy.yml`](examples/caller-deploy.yml) to `.github/workflows/deploy.yml` in your repository.
 4. Create the secrets that your `it25a.yml` declares (repository secrets).
@@ -29,8 +31,8 @@ The deployer only accepts requests from this workflow (it checks the signed `job
 
 ## Versions
 
-Use a tag in the caller (`@v1`). Until the first tag exists you can use `@main`.
-Breaking changes get a new major tag.
+Use a tag in the caller (`@v1`). Breaking changes get a new major tag (`v2`). Fixes that do not break callers move the existing `v1` tag forward.
+The deployer accepts tags like `v1`, `v1.2` or `v1.2.3` and `@main`; other refs (branches, commit hashes) are rejected.
 
 ## Develop
 
