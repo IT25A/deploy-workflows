@@ -19,7 +19,7 @@
       "type": "object",
       "minProperties": 1,
       "maxProperties": 10,
-      "propertyNames": { "pattern": "^[a-z][a-z0-9-]{0,29}$" },
+      "propertyNames": { "pattern": "^(?!it25a-)[a-z][a-z0-9-]{0,29}$", "description": "Names starting with it25a- are reserved for platform services." },
       "additionalProperties": { "$ref": "#/$defs/service" }
     }
   },

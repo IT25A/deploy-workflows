@@ -23,7 +23,7 @@ Examples are in `examples/`. Your editor knows the schema if the first line of t
 |---|---|---|
 | `version` | yes | Always `1` |
 | `compose` | no | Path to your Compose file (mode C) |
-| `services.<name>` | yes | Name: lowercase letters, digits, hyphens; starts with a letter; max. 30 characters |
+| `services.<name>` | yes | Name: lowercase letters, digits, hyphens; starts with a letter; max. 30 characters; must not start with `it25a-` (reserved) |
 | `…build` | yes in mode B | Build context as a path (`./backend`) or an object with `context`, `dockerfile`, `target`, `args` |
 | `…build.dockerfile` | no | Relative to the context, default `Dockerfile` |
 | `…build.args` | no | Build arguments, placeholders allowed |
@@ -47,6 +47,7 @@ In mode C, `build` may be omitted if the service is defined in the Compose file.
 
 - Per host, at most one service without `path` is allowed (it accepts all remaining requests). Paths must be unique.
 - The alias comes from the registry (`apps-registry`), not from the manifest.
+- Apps restricted to course members receive the headers `It25a-User` (username) and `It25a-Name` (display name, URL-encoded) on every request, so they need no login of their own. Trust them only in apps that are set to `course`.
 - Production apps are public by default (`production_access: public`). Set `production_access: course` in the registry to restrict them to course members. Previews are reachable by course members only by default (`preview_access`).
 
 ## Placeholders
