@@ -50,7 +50,7 @@ In mode C, `build` may be omitted if the service is defined in the Compose file.
 - Per host, at most one service without `path` is allowed (it accepts all remaining requests). Paths must be unique.
 - The alias comes from the registry (`apps-registry`), not from the manifest.
 - Apps restricted to course members receive the headers `It25a-User` (username of the university account, not the GitHub username) and `It25a-Name` (first and last name of the university account, URL-encoded) on every request, so they need no login of their own. Trust them only in apps that are set to `course`.
-- Production apps are public by default (`production_access: public`). Set `production_access: course` in the registry to restrict them to course members. Previews are reachable by course members only by default (`preview_access`).
+- Production apps and previews are reachable by course members only by default (`production_access`, `preview_access`). **We encourage you to set `production_access` to `public` once the app is finished**, so that more people can benefit from it.
 
 ## Placeholders
 
@@ -120,6 +120,8 @@ Your own services use `${IMAGE_<SERVICE>}`. For everything else only **official 
 1. Create the secret in GitHub (repository, Settings, Secrets and variables, Actions) as a **repository secret**. Secrets that are stored in an environment (`preview`, `production`) are not guaranteed to reach the reusable workflow; use them only after you have tested it.
 2. Add the name under `secrets` of the service.
 3. The workflow passes on only the declared secrets. All others stay in GitHub.
+
+Keep the list short: store only values that are really secret (passwords, keys). GitHub hides every secret value wherever it appears. If a value is part of the address of your app (the alias, `app`, `it25a`, ...), GitHub hides it in the address too and does not attach the preview link to the pull request. A database name or user such as `x-poll` is not a secret; put it under `environment`.
 
 Names with the prefixes `IT25A_`, `GITHUB_`, `IMAGE_`, `URL_`, `HOST_`, `COMPOSE_`, `DOCKER_` as well as `FQDN`, `PROJECT_NAME`, `PATH` and `HOME` are reserved.
 

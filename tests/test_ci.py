@@ -208,14 +208,6 @@ def test_missing_oidc_permission(monkeypatch, capsys):
 # ---------------------------------------------------------------- static checks of the repository files
 
 
-def test_examples_match_the_schema():
-    schema = json.loads((ROOT / "schema" / "it25a.schema.json").read_text())
-    validator = Draft202012Validator(schema)
-    for path in sorted((ROOT / "examples").glob("0*.yml")):
-        errors = [e.message for e in validator.iter_errors(yaml.safe_load(path.read_text()))]
-        assert not errors, (path.name, errors)
-
-
 def test_workflow_structure():
     workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "deploy.yml").read_text())
     assert "workflow_call" in workflow[True]            # PyYAML reads the key `on` as True

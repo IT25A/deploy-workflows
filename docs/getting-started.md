@@ -125,31 +125,30 @@ Then open `http://localhost:3000`. If you do not have Docker, skip this: the pul
 
 ## Step 3: Register the repository
 
-Only repositories on an approved list can be deployed. You request the entry with a pull request; you do not need Git on your computer for this.
+Only repositories on an approved list can be deployed. You request the entry with a form; you do not need Git on your computer for this.
 
-1. Open [`apps.json` in `IT25A/apps-registry`](https://github.com/IT25A/apps-registry/blob/main/apps.json) and click the pencil (*Edit this file*). GitHub creates your own copy (a *fork*) automatically.
-2. Add an entry. The key is `organization/repository`:
+1. Open the form [**Register an app**](https://github.com/IT25A/apps-registry/issues/new/choose) and fill it in (if the page says "404", ask the course representatives to give you access):
 
-   ```json
-   "IT25A/my-repo": {
-     "alias": "myapp",
-     "title": "My App",
-     "description": "What the app does, in one or two sentences"
-   }
-   ```
+   | Field | Example |
+   |---|---|
+   | Repository | `IT25A/my-repo` |
+   | Alias | `myapp` |
+   | Title | `My App` |
+   | Description | `A small tool to plan study groups` |
 
-   - Between two entries there is a **comma**; after the last entry there is **none**.
    - The `alias` becomes your address `myapp.apps.it25a.de`. Use lowercase letters, digits and single hyphens. Choose a short name that nobody could confuse with another project.
-   - The description is visible to all course members.
-3. Click *Commit changes*, then *Propose changes* and *Create pull request*.
-4. A check called "Validate registry" runs automatically and shows what is wrong, if anything. Fix it by editing the file again in your copy; the pull request updates itself.
-5. A maintainer reviews and merges. **Wait for the merge** before you continue with the first deployment.
+   - The title has at most 50 characters. The description has at most 250 characters and is visible to all course members.
+2. Click *Submit new issue*. Within a minute a comment appears on your issue.
+   - If something is wrong, the comment lists everything at once. Edit your issue and the check runs again.
+   - If all is fine, a pull request is created and a maintainer reviews it.
+3. **Wait until your issue is closed.** That means the maintainer merged the entry. Only then continue with the first deployment.
 
-Optional settings for the entry (full list in the [registry README](https://github.com/IT25A/apps-registry#fields)):
+The other fields of the form:
 
-- `"production_access": "course"`: only course members can open the app. Recommended while the project is under development.
-- `"preview_access": "public"`: previews are open to everyone instead of course members only.
-- `"previews": false`: no previews.
+- **Who may open the app**: *Course members only* means that visitors have to sign in with GitHub. It is the safe start while the project is under development. **When the app is finished, we encourage you to make it public** (*Everyone*), so that more people can benefit from it. Use the form [*Change an app*](https://github.com/IT25A/apps-registry/issues/new/choose) in `apps-registry` to switch it.
+- **Previews for pull requests** and **Who may open the previews**: every open pull request gets its own test address. By default only course members can open previews.
+
+(All fields are described in the [registry README](https://github.com/IT25A/apps-registry#fields).)
 
 ## Step 4: Add the workflow
 
@@ -181,7 +180,8 @@ Skip this step if your app needs neither secrets nor a special port.
    - `port` is the port your app listens on.
    - `route: { host: "@" }` makes the app reachable at `<alias>.apps.it25a.de`. Without `route` the app runs but nobody can open it.
    - `secrets` lists the **names** of your GitHub secrets. Only listed secrets are passed on.
-3. Your app reads each secret as an environment variable **at runtime** (Node.js: `process.env.SESSION_SECRET`; SvelteKit 3: declared in `src/env.ts` and imported from `$app/env/private`, see the [SvelteKit examples](../examples/sveltekit-sqlite/README.md); older SvelteKit: `$env/dynamic/private`).
+3. **Store only real secrets.** Names and settings that are not secret (database name, database user, port, URLs) belong in `environment` in `it25a.yml`, not in GitHub secrets. GitHub hides the value of every secret wherever it appears, also inside the address of your app. If a secret is, for example, `x-poll`, the address `https://x-poll-pr1.apps.it25a.de` is shown as `https://***-pr1.apps.it25a.de`, and GitHub then does not attach it to the deployment ("Skip setting environment url as environment 'preview' may contain secret"). The app still runs, but the link to the preview is missing in the pull request. So never use a secret value that is part of your address: the alias, `app`, `apps`, `it25a` or `pr`.
+4. Your app reads each secret as an environment variable **at runtime** (Node.js: `process.env.SESSION_SECRET`; SvelteKit 3: declared in `src/env.ts` and imported from `$app/env/private`, see the [SvelteKit examples](../examples/sveltekit-sqlite/README.md); older SvelteKit: `$env/dynamic/private`).
 
 Several parts or a database? Start from an [example](../examples/README.md) and read [`manifest.md`](manifest.md).
 
@@ -200,7 +200,8 @@ Open the address. The first start can take a few seconds.
 - **Update the live site:** merge to `main`. A failed update never breaks the running version; the previous one keeps running.
 - **Try changes safely:** create a branch and a pull request. Within a few minutes the pull request shows a *View deployment* button with the preview address. Only course members can open previews unless you set `preview_access` to `public`. Close or merge the pull request and the preview disappears.
 - **Pull requests from forks** are skipped on purpose (GitHub gives them no secrets). Work on branches of the repository itself.
-- **Change the address, title or description:** edit your entry in `apps-registry` with a pull request.
+- **Change the title, description, previews or who may open the app:** use the form [*Change an app*](https://github.com/IT25A/apps-registry/issues/new/choose) in `apps-registry`. A maintainer approves it. To change the address (the alias), ask a maintainer.
+- **Take the app offline:** use the form *Remove an app* in the same place.
 
 ## Something went wrong
 
@@ -209,12 +210,13 @@ Every message appears in the log of the **Deploy** job (Actions tab, click the r
 | The message contains | Meaning | What to do |
 |---|---|---|
 | `is not registered` | There is no approved registry entry yet | Finish step 3 and wait for the merge |
-| `repository ID does not match` | The alias already belongs to another repository (also after deleting and recreating a repository) | Ask a maintainer |
+| `repository ID does not match` or `is already used by` | The alias belongs to another repository, or to an app that was removed less than 30 days ago (also after deleting and recreating a repository). The message names the date | Ask a maintainer, who can release the alias earlier |
 | `Only public repositories` | The repository is private | Make it public |
 | `denied` / `unauthorized` while pulling | The image is still private | Step 6, point 3 |
 | `Preview environments are disabled` | `previews` is `false` in the registry | Change it there, or merge to `main` |
 | An error in **Plan** about `it25a.yml` or the Compose file | Something in your configuration is not allowed | Read the message; it names the line. Fix the file and push again |
 | `unhealthy`, or `Restarting` in the container list | The app does not start, or it does not answer the route that the `HEALTHCHECK` of the Dockerfile asks (for example `/health`) | Read the log lines **below** the message: those that start with the service name (for example `api-1  \|`) are the output of your container and show the real error. If the app only lacks the route, add it (see the example's README) or remove the `HEALTHCHECK` lines. The old version keeps running meanwhile |
+| `Skip setting environment url as environment 'preview' may contain secret` (in *Complete job*), or `***` inside an address | One of your GitHub secrets has a value that is part of the address, for example the alias | Do not store that value as a secret (see step 5), or choose another value, and push again |
 | The **Build** stage fails | The Dockerfile or the app build is broken | Read the log of the failing step; it is the same output as `docker build` on your computer |
 
 **You do not have to check your configuration locally.** The *Plan* stage validates `it25a.yml` on every push and pull request before anything is built or started, and the registry pull request has its own check.
@@ -232,7 +234,7 @@ A failed **first** deployment leaves nothing behind, so you can simply fix and p
 
 ## Apps for course members only
 
-If you set `"production_access": "course"` (and for previews by default), visitors first see a short explanation, sign in, and come back to the page they wanted. Your app needs no login code. It receives two request headers:
+By default (`"production_access": "course"`, and for previews), visitors first see a short explanation, sign in, and come back to the page they wanted. Your app needs no login code. It receives two request headers:
 
 | Header | Content |
 |---|---|
