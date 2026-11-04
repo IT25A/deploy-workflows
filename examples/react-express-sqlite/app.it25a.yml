@@ -3,7 +3,6 @@
 #   https://<alias>.apps.it25a.de        -> frontend
 #   https://<alias>.apps.it25a.de/api    -> backend (stores its data in the SQLite file)
 version: 1
-compose: compose.it25a.yml          # only used to attach the volume for the database file, see compose.it25a.yml
 services:
   web:
     build: ./frontend
@@ -13,6 +12,7 @@ services:
     build: ./backend
     port: 3000
     route: { host: "@", path: /api }
+    volumes: ["db-data:/data"]       # a folder that survives updates: name:folder in the container
     environment:
       DB_PATH: /data/app.sqlite      # the file lies in the volume "db-data"
     # secrets: [API_KEY]             # uncomment if the backend needs secrets

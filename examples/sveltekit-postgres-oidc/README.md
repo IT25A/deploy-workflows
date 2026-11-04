@@ -103,7 +103,7 @@ export async function GET() {
 
 ## Hardening
 
-The Dockerfile runs the app as the unprivileged user `node`, and `compose.it25a.yml` adds `init`, `cap_drop`, `read_only` and a grace period for stopping to the app (see the overview in [`examples/README.md`](../README.md)).
+The Dockerfile runs the app as the unprivileged user `node`, and the platform adds `init`, `cap_drop: [ALL]` and a grace period for stopping by itself. `compose.it25a.yml` adds `read_only` (only `/tmp` stays writable, see the overview in [`examples/README.md`](../README.md)).
 
 ## Good to know
 

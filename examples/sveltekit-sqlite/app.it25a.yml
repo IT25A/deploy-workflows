@@ -1,13 +1,13 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json
 # SvelteKit app with a SQLite database file that survives updates
 version: 1
-compose: compose.it25a.yml          # only used to attach the volume, see compose.it25a.yml
 services:
   app:
     build: .                         # the Dockerfile in the root of the repository
     port: 3000
     route: { host: "@" }             # https://<alias>.apps.it25a.de
+    volumes: ["app-data:/data"]      # a folder that survives updates: name:folder in the container
     environment:
       ORIGIN: "{{ url.app }}"        # the public address; SvelteKit needs it behind a proxy (form actions)
-      DATABASE_PATH: /data/app.db    # the file lies in the volume "app-data"
+      DATABASE_PATH: /data/app.db    # the file lies in the volume "app-data" (see volumes)
     # secrets: [SESSION_SECRET]      # uncomment if your app needs secrets (create them in GitHub first)

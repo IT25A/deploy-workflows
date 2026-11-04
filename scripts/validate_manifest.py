@@ -23,6 +23,31 @@ PLACEHOLDER = re.compile(r"\{\{\s*([A-Za-z_]+)(?:\.([A-Za-z0-9-]+))?\s*\}\}")
 REF_KINDS = {"url", "host"}  # need a service as target, e.g. {{ url.api }}
 PLAIN_KINDS = {"alias"}      # take no target: {{ alias }}
 
+RESERVED_MOUNT_ROOTS = {"proc", "sys", "dev"}
+
+
+def mount_errors(entries: list[str], where: str) -> list[str]:
+    """Rules for `volumes: ["name:/folder"]` that the schema cannot express."""
+    errors: list[str] = []
+    names: set[str] = set()
+    targets: set[str] = set()
+    for entry in entries:
+        name, _, target = entry.partition(":")
+        parts = target.split("/")[1:]
+        if target == "/":
+            errors.append(f"{where}: '{entry}' mounts the root folder.")
+        elif any(part in ("", ".", "..") for part in parts):
+            errors.append(f"{where}: '{target}' is not a valid folder (no '.', '..', double or trailing slash).")
+        elif parts[0] in RESERVED_MOUNT_ROOTS:
+            errors.append(f"{where}: '{target}' is a system folder.")
+        if name in names:
+            errors.append(f"{where}: volume '{name}' is used twice.")
+        if target in targets:
+            errors.append(f"{where}: folder '{target}' is used twice.")
+        names.add(name)
+        targets.add(target)
+    return errors
+
 
 def validate(manifest_path: Path, repo_root: Path) -> tuple[list[str], list[str]]:
     """Return (errors, warnings)."""
@@ -102,6 +127,10 @@ def validate(manifest_path: Path, repo_root: Path) -> tuple[list[str], list[str]
 
     if not hosts:
         warnings.append("No service has a 'route'. The app would not be reachable from outside.")
+
+    # Volumes
+    for name, svc in services.items():
+        errors.extend(mount_errors(svc.get("volumes") or [], f"services/{name}/volumes"))
 
     # Placeholders in environment and build.args
     def check_placeholders(value: str, where: str) -> None:

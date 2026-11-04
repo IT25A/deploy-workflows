@@ -23,10 +23,10 @@ you push to GitHub ──► GitHub builds your app into a "container image" ─
 | `.github/workflows/deploy.yml` | your repository | **Always.** Copy it, do not change it. |
 | Entry in `apps.json` | repository [`IT25A/apps-registry`](https://github.com/IT25A/apps-registry) | **Always.** A maintainer approves it. |
 | `app.it25a.yml` (or `.yaml`) | root of your repository | Only if: your app has **several parts** (for example frontend and backend), uses **a port other than 3000**, or needs **secrets** (passwords, API keys). |
-| `compose.it25a.yml` | root of your repository | Only if you need a **database in its own container** (PostgreSQL, Redis, ...) **or files that must survive updates**, for example a **SQLite file** or uploaded files (see step 1). |
+| `compose.it25a.yml` | root of your repository | Only if you need a **database in its own container** (PostgreSQL, Redis, ...). |
 | GitHub secrets | repository settings | Only if the app has passwords or API keys. |
 
-You do **not** need: a `compose.it25a.yml` for an app that keeps nothing on disk, a `.env` file with real values in the repository, port mappings, or anything on a server.
+You do **not** need: a `compose.it25a.yml` for an app without a database server (a SQLite file or uploads only need `volumes` in `app.it25a.yml`), a `.env` file with real values in the repository, port mappings, or anything on a server.
 
 ## Step 0: Check your project
 
@@ -43,12 +43,12 @@ You do **not** need: a `compose.it25a.yml` for an app that keeps nothing on disk
 | **One app** (one repository, one start command, for example a SvelteKit app or an Express app that also serves its pages) | `Dockerfile`. Nothing else. Frontend only: [`react-only`](../examples/react-only/) |
 | **One app with secrets** or a port other than 3000 | `Dockerfile` and a short `app.it25a.yml` (step 5). C++ or another language: [`cpp`](../examples/cpp/) |
 | **Frontend and backend** in one repository | One `Dockerfile` per part, and an `app.it25a.yml`. Complete example: [`react-express`](../examples/react-express/) |
-| **SQLite** (or any other file the app writes and that must stay) | The above, **plus a `compose.it25a.yml`** that attaches a volume. Even though the database is "built into" your app. Complete examples: [`sveltekit-sqlite`](../examples/sveltekit-sqlite/), [`react-express-sqlite`](../examples/react-express-sqlite/) |
+| **SQLite** (or any other file the app writes and that must stay) | The above, **plus `volumes`** in `app.it25a.yml`, which attaches a folder that survives updates. Complete examples: [`sveltekit-sqlite`](../examples/sveltekit-sqlite/), [`react-express-sqlite`](../examples/react-express-sqlite/) |
 | **A database of its own** (PostgreSQL, Redis, ...) | The above, plus a `compose.it25a.yml` that starts the database. Complete examples: [`sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/) (PostgreSQL, secrets, login), [`react-express-postgres`](../examples/react-express-postgres/) (frontend, backend and database) |
 
-> **Why does SQLite need a `compose.it25a.yml`?** Every update starts a **new container** and throws the old one away, together with every file that the app wrote inside it. A SQLite database is just a file, so without more it would be empty after each update. The `compose.it25a.yml` attaches a **volume**: a folder that lives outside the container and survives updates, restarts and new versions. Your app stores the database file there. The same applies to uploaded files. A real database server such as PostgreSQL runs in its own container and needs such a volume too.
+> **Why does SQLite need `volumes`?** Every update starts a **new container** and throws the old one away, together with every file that the app wrote inside it. A SQLite database is just a file, so without more it would be empty after each update. `volumes: ["data:/data"]` in `app.it25a.yml` attaches a **volume**: a folder that lives outside the container and survives updates, restarts and new versions. Your app stores the database file there. The same applies to uploaded files. A real database server such as PostgreSQL runs in its own container and needs such a volume too, in its `compose.it25a.yml`.
 
-> **Your `compose.it25a.yml` is not a complete Compose file.** The platform merges it with `app.it25a.yml` into one Compose file on the server. That is why a service of your own may have only `volumes` and no `image` or `build` in it: the platform adds the image it built. Use the example files as they are. `docker compose up` does not work with this file alone on your computer, and that is fine.
+> **Your `compose.it25a.yml` is not a complete Compose file.** The platform merges it with `app.it25a.yml` into one Compose file on the server. That is why a service of your own may have only `depends_on` or `read_only` and no `image` or `build` in it: the platform adds the image it built. Use the example files as they are. `docker compose up` does not work with this file alone on your computer, and that is fine.
 
 Most projects start with the first row. **Every example is a complete set of files that you can copy** and adapt: see the [overview of the examples](../examples/README.md). Read on; the other rows only change step 2 and step 5.
 
@@ -120,7 +120,8 @@ Then open `http://localhost:3000`. If you do not have Docker, skip this: the pul
 | Build fails at `npm ci` | `package-lock.json` is missing in Git, or it does not match `package.json`. Run `npm install` locally and commit the lock file. |
 | `npm start` is missing | Add `"start": "node index.js"` (your start file) under `scripts` in `package.json`. |
 | The Dockerfile is not found | The file name is spelled wrong (`dockerfile`, `Dockerfile.txt`) or it is not in the root. |
-| The app cannot write a file: `EACCES`, `Permission denied`, `SQLITE_CANTOPEN`, the container is "unhealthy" | The container runs as the unprivileged user `node`, who may only write to folders that belong to `node`. Create the folder in the Dockerfile **before** `USER node` (`RUN mkdir -p /data && chown node:node /data`) and attach a volume at that path in `compose.it25a.yml`. See [`react-express-sqlite`](../examples/react-express-sqlite/README.md). |
+| The app cannot write a file: `EACCES`, `Permission denied`, `SQLITE_CANTOPEN`, the container is "unhealthy" | The container runs as the unprivileged user `node`, who may only write to folders that belong to `node`. Create the folder in the Dockerfile **before** `USER node` (`RUN mkdir -p /data && chown node:node /data`) and attach a volume at that path (`volumes: ["data:/data"]` in `app.it25a.yml`). See [`react-express-sqlite`](../examples/react-express-sqlite/README.md). |
+| The container stops with `Operation not permitted` | The platform removes all special Linux privileges from your container (for example to listen on a port below 1024 or to switch the user). Listen on a port above 1024, or set `cap_drop: []` for the service in your `compose.it25a.yml`. |
 | Build fails at `mkdir` with "Permission denied" | The line stands **after** `USER node`. From there on every command runs as `node`. Move it above `USER node`. |
 | The app needs a `.env` file | Files like `.env` are not part of the build. Read the values from environment variables and use secrets (step 5). |
 | SvelteKit: the build fails because variables from `src/env.ts` are missing | SvelteKit 3 checks the variables when it builds. Commit a `.env.example` with harmless dummy values and let the Dockerfile copy it for the build, as in the [SvelteKit examples](../examples/sveltekit-sqlite/README.md). |
@@ -265,7 +266,7 @@ Trust these headers **only** if the app is restricted to course members. On a pu
 | Resources per container | 512 MB memory, 0.5 CPU, 256 processes |
 | Services per app | 10 |
 | Previews per app | 3 open at the same time, 14 days lifetime |
-| Databases | Allowed (with `compose.it25a.yml`, approved images such as `postgres`); the data lives in volumes on the server |
+| Databases | Files such as SQLite need `volumes` in `app.it25a.yml`; database servers such as `postgres` need a `compose.it25a.yml` (approved images only); the data lives in volumes on the server |
 
 There are **no database backups yet**. Keep your own copy of data that you cannot recreate.
 Apps are for course projects. Do not store personal data of third parties.

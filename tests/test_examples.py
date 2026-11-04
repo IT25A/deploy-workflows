@@ -40,3 +40,35 @@ def test_relative_links_in_the_documentation_resolve():
                 continue
             path = (md.parent / target.split("#")[0]).resolve()
             assert path.exists(), f"{md.relative_to(ROOT)}: broken link {target}"
+
+
+@pytest.mark.parametrize("entries, fragment", [
+    (["data:/"], "root folder"),
+    (["data:/data/"], "not a valid folder"),
+    (["data:/a/../b"], "not a valid folder"),
+    (["data:/proc/x"], "system folder"),
+    (["data:/data", "data:/other"], "used twice"),
+    (["one:/data", "two:/data"], "used twice"),
+])
+def test_volume_rules_the_schema_cannot_express(tmp_path, entries, fragment):
+    (tmp_path / "Dockerfile").write_text("FROM scratch\n")
+    manifest = tmp_path / "app.it25a.yml"
+    manifest.write_text("version: 1\nservices:\n  app:\n    build: .\n    route: { host: '@' }\n    volumes: " + str(entries) + "\n")
+    errors, _warnings = validate(manifest, tmp_path)
+    assert any(fragment in error for error in errors), errors
+
+
+@pytest.mark.parametrize("entry", ["/host:/data", "data", "data:data", "a:/1b c"])
+def test_volume_entries_must_look_like_name_and_folder(tmp_path, entry):
+    (tmp_path / "Dockerfile").write_text("FROM scratch\n")
+    manifest = tmp_path / "app.it25a.yml"
+    manifest.write_text(f"version: 1\nservices:\n  app:\n    build: .\n    route: {{ host: '@' }}\n    volumes: ['{entry}']\n")
+    errors, _warnings = validate(manifest, tmp_path)
+    assert errors
+
+
+def test_valid_volumes_pass(tmp_path):
+    (tmp_path / "Dockerfile").write_text("FROM scratch\n")
+    manifest = tmp_path / "app.it25a.yml"
+    manifest.write_text("version: 1\nservices:\n  app:\n    build: .\n    route: { host: '@' }\n    volumes: ['data:/data', 'logs:/var/log/app']\n")
+    assert validate(manifest, tmp_path)[0] == []

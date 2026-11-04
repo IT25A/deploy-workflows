@@ -40,6 +40,11 @@
       "type": "string",
       "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"
     },
+    "volumeMount": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,62}:/[A-Za-z0-9._/-]*$",
+      "description": "name:/folder/in/the/container, written like in Compose. Only named volumes."
+    },
     "secretName": {
       "type": "string",
       "pattern": "^(?!IT25A_|GITHUB_|IMAGE_|URL_|HOST_|FQDN|PROJECT_NAME$|COMPOSE_|DOCKER_|PATH$|HOME$)[A-Z_][A-Z0-9_]{0,63}$",
@@ -111,6 +116,13 @@
           "propertyNames": { "$ref": "#/$defs/envName" },
           "additionalProperties": { "type": "string", "maxLength": 1000 },
           "description": "Non-secret environment variables. Placeholders such as {{ url.api }} are allowed."
+        },
+        "volumes": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/volumeMount" },
+          "description": "Named volumes whose files survive updates and restarts, for example data:/data (a SQLite file or uploads)."
         },
         "secrets": {
           "type": "array",

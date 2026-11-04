@@ -1,14 +1,13 @@
 # SvelteKit with an SQLite database
 
-SQLite keeps the whole database in **one file**. Although the database is "built into" your app, you need a `compose.it25a.yml` here: every update starts a new container and throws the old one away with all files inside. On the server the database file therefore lies in a *volume*, a folder that Docker keeps outside the container, so your data survives updates, restarts and new versions of the app.
+SQLite keeps the whole database in **one file**. Every update starts a new container and throws the old one away with all files inside, so the file has to lie in a *volume*: a folder that Docker keeps outside the container. Your data then survives updates, restarts and new versions of the app. The line `volumes: ["app-data:/data"]` in `app.it25a.yml` is all it takes.
 
 ## Files
 
 | File | Where | Notes |
 |---|---|---|
 | [`Dockerfile`](Dockerfile) | root | Builds the SvelteKit app and starts it |
-| [`app.it25a.yml`](app.it25a.yml) | root | Port, address, `ORIGIN` and the path of the database file |
-| [`compose.it25a.yml`](compose.it25a.yml) | root | Attaches the volume `app-data` at `/data` (and hardens the container) |
+| [`app.it25a.yml`](app.it25a.yml) | root | Port, address, `ORIGIN`, the path of the database file and the volume `app-data` at `/data` |
 | [`.env.example`](.env.example) | root | Dummy values for development and for the build |
 | [`.dockerignore`](../../templates/.dockerignore) | root | Copy it from `templates/` (it also keeps local `*.db` files out of the image) |
 
@@ -65,7 +64,7 @@ This example uses the explicit environment variables of SvelteKit 3 (`src/env.ts
 
 ## Hardening
 
-The Dockerfile runs the app as the unprivileged user `node` and prepares `/data` for it. `compose.it25a.yml` adds `init`, `cap_drop`, `read_only` (only `/tmp` and the volume are writable) and a grace period for stopping. If you change the folder of the database, change `mkdir`/`chown` in the Dockerfile and the volume path in `compose.it25a.yml` together.
+The Dockerfile runs the app as the unprivileged user `node` and prepares `/data` for it. The platform adds `init`, `cap_drop: [ALL]` and a grace period for stopping by itself. If you change the folder of the database, change `mkdir`/`chown` in the Dockerfile, `DATABASE_PATH` and the volume path in `app.it25a.yml` together.
 
 ## Good to know
 

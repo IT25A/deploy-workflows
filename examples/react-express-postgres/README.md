@@ -86,7 +86,7 @@ docker run --rm --name shop-db -p 5432:5432 -e POSTGRES_DB=shop -e POSTGRES_USER
 ## Stopping cleanly and hardening
 
 Handle `SIGTERM` as shown in [`react-express`](../react-express/README.md#stopping-cleanly) and close the pool afterwards (`await pool.end()`).
-The Compose file also starts the backend with the recommended hardening options (`init`, `cap_drop`, `read_only`, see the overview in [`examples/README.md`](../README.md)); the Dockerfiles run as the unprivileged user `node`. The database keeps its default settings, because PostgreSQL has to write to its own folders.
+The platform starts the backend with `init`, `cap_drop: [ALL]` and a grace period for stopping by itself. The Compose file adds `read_only` (only `/tmp` stays writable, see the overview in [`examples/README.md`](../README.md)); the Dockerfiles run as the unprivileged user `node`. The database keeps its default settings, because PostgreSQL has to write to its own folders.
 
 ## Good to know
 

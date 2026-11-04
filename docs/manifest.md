@@ -34,6 +34,7 @@ Complete example projects are in [`examples/`](../examples/README.md). Your edit
 | `…route.path` | no | Path prefix, for example `/api` |
 | `…route.strip_prefix` | no | Remove the prefix before forwarding (only together with `path`) |
 | `…environment` | no | Non-secret variables, placeholders allowed |
+| `…volumes` | no | Up to 5 volumes written like in Compose, for example `["data:/data"]`. Files in them survive updates, see [Volumes](#volumes) |
 | `…secrets` | no | Names of GitHub secrets that are passed to the service as environment variables |
 
 A service without `route` is not reachable from outside, but it is visible to the other services of the app.
@@ -52,6 +53,37 @@ In mode C, `build` may be omitted if the service is defined in the Compose file.
 - Apps restricted to course members receive the headers `It25a-User` (username of the university account, not the GitHub username) and `It25a-Name` (first and last name of the university account, URL-encoded) on every request, so they need no login of their own. Trust them only in apps that are set to `course`.
 - Production apps and previews are reachable by course members only by default (`production_access`, `preview_access`). **We encourage you to set `production_access` to `public` once the app is finished**, so that more people can benefit from it.
 
+## Volumes
+
+Every update starts a new container, and the files that the app wrote inside the old one are gone. A **volume** is a folder outside the container that stays. Use it for a SQLite file or uploaded files:
+
+```yaml
+services:
+  app:
+    build: .
+    volumes: ["data:/data"]   # name:folder in the container
+```
+
+- The format is the same as in Compose: `name:/folder`. Only named volumes are allowed, no paths of your computer or the server.
+- The folder must be absolute and must not be `/`, below `/proc`, `/sys` or `/dev`, or end with a slash. A name and a folder may each be used only once per service.
+- Production and every preview get **their own volume**. A preview starts with an empty folder and loses it when the pull request is closed.
+- The folder must belong to the user that runs your app. In the Dockerfile: `RUN mkdir -p /data && chown node:node /data` **before** `USER node`.
+- There is no backup yet. Export what you cannot recreate.
+- A volume of a database server (`postgres`, ...) is declared in the Compose file instead, see below.
+
+## What the platform sets for you
+
+Every service that is built from your repository gets these settings without any configuration:
+
+| Setting | Effect |
+|---|---|
+| `init: true` | A tiny init process forwards signals and cleans up child processes |
+| `stop_grace_period: 20s` | Running requests get 20 seconds to finish when the container stops |
+| `cap_drop: [ALL]` | The container has no special Linux privileges |
+
+Databases and other official images from your Compose file do not get them. A value of the same name in your Compose file wins, so `cap_drop: []` there turns the default off. This is needed if the app stops with `Operation not permitted`, for example because it listens on a port below 1024 or switches to another user at start.
+`read_only: true` (together with `tmpfs: [/tmp]`) is **not** set by default, because it breaks apps that write files outside `/tmp` and their volumes. Add it in the Compose file if you want it, see [`examples/sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/).
+
 ## Placeholders
 
 In `environment` and `build.args` you can have values filled in:
@@ -66,9 +98,9 @@ In `environment` and `build.args` you can have values filled in:
 
 ## Variables in the Compose file (mode C)
 
-A service may appear in **both** files: `app.it25a.yml` says how it is built and published (`build`, `route`, `environment`, `secrets`), the Compose file adds what only Compose can express (`volumes`, `depends_on`, `healthcheck`, more `environment`). The two are merged; see [`examples/sveltekit-sqlite`](../examples/sveltekit-sqlite/).
+A service may appear in **both** files: `app.it25a.yml` says how it is built and published (`build`, `route`, `environment`, `secrets`), the Compose file adds what only Compose can express (databases, `depends_on`, `healthcheck`, `read_only`, more `environment`). The two are merged; see [`examples/react-express-postgres`](../examples/react-express-postgres/). If a service has `volumes` in both files, they are added up. Two different volumes for the same folder are an error.
 
-**Your `compose.it25a.yml` does not have to be a complete Compose file.** The platform builds one Compose file from both files on the server, so your file only holds what `app.it25a.yml` cannot say. A service of your own may therefore have neither `image` nor `build` (the platform adds the image it built, for example `app:` with only `volumes` in the SQLite example), and variables such as `${IMAGE_API}` or `${DATABASE_PASSWORD}` get their values from the platform. For the same reason `docker compose up` with this file alone does not work on your computer.
+**Your `compose.it25a.yml` does not have to be a complete Compose file.** The platform builds one Compose file from both files on the server, so your file only holds what `app.it25a.yml` cannot say. A service of your own may therefore have neither `image` nor `build` (the platform adds the image it built, for example `api:` with only `depends_on` in the PostgreSQL example), and variables such as `${IMAGE_API}` or `${DATABASE_PASSWORD}` get their values from the platform. For the same reason `docker compose up` with this file alone does not work on your computer.
 
 The platform fills in these variables in your Compose file before it starts (`$$` gives a literal `$`; a variable without a value and without a default is an error):
 
