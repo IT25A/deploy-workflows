@@ -157,14 +157,22 @@ The workflow is the part that builds and publishes on every push. It is the same
 1. In your repository: *Add file, Create new file*, name it **`.github/workflows/deploy.yml`** (typing the slashes creates the folders).
 2. Paste the content of [`examples/caller-deploy.yml`](../examples/caller-deploy.yml) and commit it. Do not change anything.
 
-## Step 5: Secrets and `it25a.yml` (only if needed)
+## Step 5: `it25a.yml` and secrets (only if needed)
 
-Skip this step if your app needs neither secrets nor a special port.
+Skip this step if your app is **one container** (one `Dockerfile` in the root of the repository) that listens on port 3000 and needs neither secrets nor settings.
+
+You need an `it25a.yml` as soon as one of these applies:
+
+- the app listens on another port than 3000
+- the app has **more than one part**, for example a frontend and a backend (also without secrets)
+- the app needs a database or another service
+- the app needs secrets or settings (`environment`)
+- a part should be reachable under its own address or path (`/api`)
 
 **Secrets** are values that must not be in Git: database passwords, API keys, session secrets.
 
 1. In your repository: *Settings, Secrets and variables, Actions, New repository secret*. Use a **repository secret**, not an environment secret.
-2. Create a file `it25a.yml` in the root of your repository. For one app with a secret it looks like this:
+2. Create a file `it25a.yml` in the root of your repository. For one app with a secret and a setting it looks like this:
 
    ```yaml
    version: 1
@@ -173,12 +181,17 @@ Skip this step if your app needs neither secrets nor a special port.
        build: .
        port: 3000
        route: { host: "@" }
+       environment:
+         DATABASE_NAME: myapp
+         PUBLIC_SITE_URL: "{{ url.app }}"
        secrets: [SESSION_SECRET]
    ```
 
    - `build: .` means: the Dockerfile is in the root.
    - `port` is the port your app listens on.
    - `route: { host: "@" }` makes the app reachable at `<alias>.apps.it25a.de`. Without `route` the app runs but nobody can open it.
+   - `environment` sets variables that are **not secret**. Your app reads them like secrets, as environment variables at runtime. They are stored in Git, so everyone who can read the repository sees them.
+   - `{{ url.app }}` is a placeholder. The platform fills in the full address of the running version: `https://myapp.apps.it25a.de` in production, `https://myapp-pr7.apps.it25a.de` in the preview of pull request 7. Put placeholders in quotes. More about them in [`manifest.md`](manifest.md#placeholders).
    - `secrets` lists the **names** of your GitHub secrets. Only listed secrets are passed on.
 3. **Store only real secrets.** Names and settings that are not secret (database name, database user, port, URLs) belong in `environment` in `it25a.yml`, not in GitHub secrets. GitHub hides the value of every secret wherever it appears, also inside the address of your app. If a secret is, for example, `x-poll`, the address `https://x-poll-pr1.apps.it25a.de` is shown as `https://***-pr1.apps.it25a.de`, and GitHub then does not attach it to the deployment ("Skip setting environment url as environment 'preview' may contain secret"). The app still runs, but the link to the preview is missing in the pull request. So never use a secret value that is part of your address: the alias, `app`, `apps`, `it25a` or `pr`.
 4. Your app reads each secret as an environment variable **at runtime** (Node.js: `process.env.SESSION_SECRET`; SvelteKit 3: declared in `src/env.ts` and imported from `$app/env/private`, see the [SvelteKit examples](../examples/sveltekit-sqlite/README.md); older SvelteKit: `$env/dynamic/private`).
@@ -201,7 +214,7 @@ Open the address. The first start can take a few seconds.
 - **Try changes safely:** create a branch and a pull request. Within a few minutes the pull request shows a *View deployment* button with the preview address. Only course members can open previews unless you set `preview_access` to `public`. Close or merge the pull request and the preview disappears.
 - **Pull requests from forks** are skipped on purpose (GitHub gives them no secrets). Work on branches of the repository itself.
 - **Change the title, description, previews or who may open the app:** use the form [*Change an app*](https://github.com/IT25A/apps-registry/issues/new/choose) in `apps-registry`. A maintainer approves it. To change the address (the alias), ask a maintainer.
-- **Take the app offline:** use the form *Remove an app* in the same place.
+- **Take the app offline:** use the form [*Remove an app*](https://github.com/IT25A/apps-registry/issues/new/choose) in `apps-registry`, see [Take your app offline](#take-your-app-offline).
 
 ## Something went wrong
 
@@ -228,8 +241,8 @@ A failed **first** deployment leaves nothing behind, so you can simply fix and p
 ## Take your app offline
 
 - **Previews** disappear by themselves when the pull request is closed or merged, or after 14 days.
-- **The production app** stays online until a maintainer takes it down. Ask them, and tell them whether your data (database, uploaded files) may be deleted: taking an app down **deletes its volumes**, so export what you want to keep first.
-- Afterwards the entry is removed from `apps-registry` with a pull request. Deleting only the entry does **not** stop the app.
+- **The production app** stays online until a maintainer takes it down. Use the form [*Remove an app*](https://github.com/IT25A/apps-registry/issues/new/choose) in `apps-registry`. The maintainer asks in the issue whether your data (database, uploaded files) may be deleted: taking an app down **deletes its volumes**, so export what you want to keep first.
+- When the app is down, the pull request that removes the entry from `apps-registry` is created for you. You do not need to open one.
 - Then delete `.github/workflows/deploy.yml` (or the repository) so no new deployments are tried, and delete the container packages on GitHub (the organization's *Packages* page) if you do not need them.
 
 ## Apps for course members only
