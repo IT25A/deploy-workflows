@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Validate an it25a.yml: JSON schema plus additional rules (paths, routing, placeholders).
+"""Validate an app.it25a.yml: JSON schema plus additional rules (paths, routing, placeholders).
 
 Usage:
-    python scripts/validate_manifest.py it25a.yml [--repo-root .]
+    python scripts/validate_manifest.py app.it25a.yml [--repo-root .]
 
 The validate() function is also used by the deploy workflow and by the deployer.
 """
@@ -134,7 +134,7 @@ def validate(manifest_path: Path, repo_root: Path) -> tuple[list[str], list[str]
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("manifest", type=Path, nargs="?", default=Path("it25a.yml"))
+    parser.add_argument("manifest", type=Path, nargs="?", default=Path("app.it25a.yml"))
     parser.add_argument("--repo-root", type=Path, default=None, help="default: folder of the manifest file")
     args = parser.parse_args()
 

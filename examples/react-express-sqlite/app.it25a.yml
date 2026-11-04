@@ -3,7 +3,7 @@
 #   https://<alias>.apps.it25a.de        -> frontend
 #   https://<alias>.apps.it25a.de/api    -> backend (stores its data in the SQLite file)
 version: 1
-compose: docker-compose.yml          # only used to attach the volume for the database file, see docker-compose.yml
+compose: compose.it25a.yml          # only used to attach the volume for the database file, see compose.it25a.yml
 services:
   web:
     build: ./frontend

@@ -8,7 +8,7 @@ The platform does not care about the language, only that your program is package
 |---|---|---|
 | [`main.cpp`](main.cpp) | wherever your code is | A small web server for reference (standard library and POSIX sockets only). Replace it with your program. |
 | [`Dockerfile`](Dockerfile) | root | Compiles the program in a first stage and copies only the result into a small final image |
-| [`it25a.yml`](it25a.yml) | root | Optional here; needed to pass settings (`GREETING`) or secrets to the program |
+| [`app.it25a.yml`](app.it25a.yml) | root | Optional here; needed to pass settings (`GREETING`) or secrets to the program |
 | [`.dockerignore`](../../templates/.dockerignore) | root | Copy it from `templates/` |
 
 ## Adapt it to your project

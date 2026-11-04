@@ -6,8 +6,8 @@ The most complete everyday setup: a React frontend, an Express backend and a Pos
 my-project/
 ├── frontend/        React + Vite
 ├── backend/         Express + pg
-├── it25a.yml
-├── docker-compose.yml
+├── app.it25a.yml
+├── compose.it25a.yml
 └── .github/workflows/deploy.yml
 ```
 
@@ -17,15 +17,15 @@ The site is served at `https://<alias>.apps.it25a.de` and the backend at `https:
 
 | File | Where | Notes |
 |---|---|---|
-| [`it25a.yml`](it25a.yml) | root | The two services, routing, plain settings and the name of the secret |
-| [`docker-compose.yml`](docker-compose.yml) | root | The database with its own name and user, a health check and a volume |
+| [`app.it25a.yml`](app.it25a.yml) | root | The two services, routing, plain settings and the name of the secret |
+| [`compose.it25a.yml`](compose.it25a.yml) | root | The database with its own name and user, a health check and a volume |
 | [`frontend/Dockerfile`](frontend/Dockerfile) | `frontend/` | Builds the React app and serves the files |
 | [`backend/Dockerfile`](backend/Dockerfile) | `backend/` | Starts the Express server, with a health check |
 | [`.dockerignore`](../../templates/.dockerignore) | `frontend/` **and** `backend/` | Copy it from `templates/` into both folders |
 
 ## Set up your own names and the password
 
-1. Choose a database name and user. Change them in **both** files: `DB_NAME`/`DB_USER` in `it25a.yml` and `POSTGRES_DB`/`POSTGRES_USER` in `docker-compose.yml`.
+1. Choose a database name and user. Change them in **both** files: `DB_NAME`/`DB_USER` in `app.it25a.yml` and `POSTGRES_DB`/`POSTGRES_USER` in `compose.it25a.yml`.
 2. Create the secret `DB_PASSWORD` in GitHub (repository, *Settings, Secrets and variables, Actions*). Use letters and digits.
 3. The database is created with these values **the first time it starts**. Changing the password later in GitHub does not change the password inside an existing database. Decide before the first deployment.
 

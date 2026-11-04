@@ -7,10 +7,10 @@ Apps are deployed to `https://<alias>.apps.it25a.de`; every open pull request ge
 
 New here? Read the step-by-step guide: [`docs/getting-started.md`](docs/getting-started.md). It explains every file, has Dockerfile templates for common frameworks in [`templates/`](templates/) and complete example projects in [`examples/`](examples/README.md).
 
-1. Create the repository in the organization `IT25A` (a personal repository only after talking to the maintainers) and make it **public**. Every project needs a `Dockerfile` (the app listens on port 3000). Add an [`it25a.yml`](docs/manifest.md) and a `docker-compose.yml` only when you need them; the guide explains when.
+1. Create the repository in the organization `IT25A` (a personal repository only after talking to the maintainers) and make it **public**. Every project needs a `Dockerfile` (the app listens on port 3000). Add an [`app.it25a.yml`](docs/manifest.md) and a `compose.it25a.yml` only when you need them; the guide explains when.
 2. Register it in [`IT25A/apps-registry`](https://github.com/IT25A/apps-registry) with the form *Register an app* (later changes and removal have their own forms). A maintainer approves it.
 3. Copy [`examples/caller-deploy.yml`](examples/caller-deploy.yml) to `.github/workflows/deploy.yml` in your repository.
-4. Create the secrets that your `it25a.yml` declares (repository secrets).
+4. Create the secrets that your `app.it25a.yml` declares (repository secrets).
 5. Push to `main`. The workflow validates the manifest, builds the images, deploys and prints the URL.
 
 Open pull requests are deployed as `https://<alias>-pr<number>.apps.it25a.de` (course members only, unless the registry says otherwise)
@@ -21,7 +21,7 @@ and are removed when the pull request is closed, or after 14 days.
 | Job | Purpose |
 |---|---|
 | Prepare | Finds out which version of this workflow is running, so the scripts come from the same commit |
-| Plan | Validates `it25a.yml`, asks the deployer for URLs and build arguments, creates the build matrix |
+| Plan | Validates `app.it25a.yml`, asks the deployer for URLs and build arguments, creates the build matrix |
 | Build | One job per service: builds the image with a layer cache and pushes it to GHCR |
 | Deploy | Sends the image names and the declared secrets to the deployer and shows its log |
 | Remove preview | When a pull request is closed: removes the preview environment |
@@ -39,7 +39,7 @@ The deployer accepts tags like `v1`, `v1.2` or `v1.2.3` and `@main`; other refs 
 ```bash
 pip install -r scripts/requirements.txt pytest
 pytest
-python scripts/validate_manifest.py path/to/it25a.yml
+python scripts/validate_manifest.py path/to/app.it25a.yml
 ```
 
 `scripts/it25a_ci.py` is the client that runs inside the workflow. The tests run it against a stub of the deployer.

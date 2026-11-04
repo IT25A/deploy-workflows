@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json
 # SvelteKit app with a SQLite database file that survives updates
 version: 1
-compose: docker-compose.yml          # only used to attach the volume, see docker-compose.yml
+compose: compose.it25a.yml          # only used to attach the volume, see compose.it25a.yml
 services:
   app:
     build: .                         # the Dockerfile in the root of the repository

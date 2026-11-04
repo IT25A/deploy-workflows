@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/IT25A/deploy-workflows/schema/it25a.schema.json",
-  "title": "IT25A app manifest (it25a.yml, version 1)",
+  "title": "IT25A app manifest (app.it25a.yml, version 1)",
   "description": "Describes which services of an app are built, how they are reachable and which secrets they need.",
   "type": "object",
   "required": ["version", "services"],

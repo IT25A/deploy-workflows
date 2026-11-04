@@ -9,12 +9,12 @@ Besides these files every project needs the same two things, which are not repea
 | My project is... | Example | Files you add |
 |---|---|---|
 | A **React** (or Vue, Svelte) frontend only, no server of my own | [`react-only/`](react-only/) | `Dockerfile` |
-| A **React frontend with an Express backend** (two folders, one repository) | [`react-express/`](react-express/) | `it25a.yml`, a `Dockerfile` per folder |
-| A **React frontend with an Express backend and an SQLite** database file | [`react-express-sqlite/`](react-express-sqlite/) | `it25a.yml`, `docker-compose.yml`, a `Dockerfile` per folder |
-| A **React frontend, Express backend and PostgreSQL** database | [`react-express-postgres/`](react-express-postgres/) | `it25a.yml`, `docker-compose.yml`, a `Dockerfile` per folder |
-| **SvelteKit with an SQLite** database file | [`sveltekit-sqlite/`](sveltekit-sqlite/) | `Dockerfile`, `it25a.yml`, `docker-compose.yml`, `.env.example` |
-| **SvelteKit with PostgreSQL and OpenID Connect** login, with secrets and plain settings | [`sveltekit-postgres-oidc/`](sveltekit-postgres-oidc/) | `Dockerfile`, `it25a.yml`, `docker-compose.yml`, `.env.example`, `scripts/migrate.js`, `migrations/` |
-| A **C++** (or any other language) program | [`cpp/`](cpp/) | `Dockerfile`, `it25a.yml` |
+| A **React frontend with an Express backend** (two folders, one repository) | [`react-express/`](react-express/) | `app.it25a.yml`, a `Dockerfile` per folder |
+| A **React frontend with an Express backend and an SQLite** database file | [`react-express-sqlite/`](react-express-sqlite/) | `app.it25a.yml`, `compose.it25a.yml`, a `Dockerfile` per folder |
+| A **React frontend, Express backend and PostgreSQL** database | [`react-express-postgres/`](react-express-postgres/) | `app.it25a.yml`, `compose.it25a.yml`, a `Dockerfile` per folder |
+| **SvelteKit with an SQLite** database file | [`sveltekit-sqlite/`](sveltekit-sqlite/) | `Dockerfile`, `app.it25a.yml`, `compose.it25a.yml`, `.env.example` |
+| **SvelteKit with PostgreSQL and OpenID Connect** login, with secrets and plain settings | [`sveltekit-postgres-oidc/`](sveltekit-postgres-oidc/) | `Dockerfile`, `app.it25a.yml`, `compose.it25a.yml`, `.env.example`, `scripts/migrate.js`, `migrations/` |
+| A **C++** (or any other language) program | [`cpp/`](cpp/) | `Dockerfile`, `app.it25a.yml` |
 
 ## What the examples show besides the minimum
 
@@ -30,5 +30,5 @@ Nothing fits exactly? Combine them. The pieces are independent: the database par
 
 ## How these examples were checked
 
-- **Checked automatically:** the `it25a.yml` files pass the same validation that the deploy workflow runs, and the Compose files pass the rules of the deployer (allowed keys, images and volumes). The files were also rendered with the deployer's own code for production and for previews.
+- **Checked automatically:** the `app.it25a.yml` files pass the same validation that the deploy workflow runs, and the Compose files pass the rules of the deployer (allowed keys, images and volumes). The files were also rendered with the deployer's own code for production and for previews.
 - **Not tested on a real Docker yet:** building the Dockerfiles and starting the containers, and the code snippets in the READMEs. If a build fails in your project, the log of the *Build* stage shows what is missing. If an example itself is broken, please tell the maintainers.

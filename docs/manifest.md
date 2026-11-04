@@ -1,17 +1,17 @@
-# App manifest `it25a.yml`
+# App manifest `app.it25a.yml`
 
 > New here? Start with the [step-by-step guide](getting-started.md). This page is the reference for all fields.
 
 The manifest describes which services of your app are built, how they are reachable and which secrets they need.
-It lives in the root of your repository. Without a manifest, zero-config mode applies.
+It lives in the root of your repository and is named `app.it25a.yml`. `app.it25a.yaml` works as well, but only one of the two files may exist. Without a manifest, zero-config mode applies.
 
 ## Three modes
 
 | Mode | Present in the repository | Result |
 |---|---|---|
 | **A – Zero-config** | only a `Dockerfile` in the root | One service `app`, port 3000, reachable at `https://<alias>.apps.it25a.de` |
-| **B – Manifest** | `it25a.yml` | Any number of services (maximum 10), all built from source; the platform generates the Compose file |
-| **C – Manifest + Compose** | `it25a.yml` and `docker-compose.yml` | Additional services such as databases come from your Compose file |
+| **B – Manifest** | `app.it25a.yml` | Any number of services (maximum 10), all built from source; the platform generates the Compose file |
+| **C – Manifest + Compose** | `app.it25a.yml` and `compose.it25a.yml` | Additional services such as databases come from your Compose file |
 
 Complete example projects are in [`examples/`](../examples/README.md). Your editor knows the schema if the first line of the file looks like this (in VS Code this needs the extension **YAML** by Red Hat, `redhat.vscode-yaml`; without it the line is just a comment):
 
@@ -24,7 +24,7 @@ Complete example projects are in [`examples/`](../examples/README.md). Your edit
 | Field | Required | Meaning |
 |---|---|---|
 | `version` | yes | Always `1` |
-| `compose` | no | Path to your Compose file (mode C) |
+| `compose` | no | Path to your Compose file (mode C). Any name works; we recommend `compose.it25a.yml` |
 | `services.<name>` | yes | Name: lowercase letters, digits, hyphens; starts with a letter; max. 30 characters; must not start with `it25a-` (reserved) |
 | `…build` | yes in mode B | Build context as a path (`./backend`) or an object with `context`, `dockerfile`, `target`, `args` |
 | `…build.dockerfile` | no | Relative to the context, default `Dockerfile` |
@@ -66,7 +66,9 @@ In `environment` and `build.args` you can have values filled in:
 
 ## Variables in the Compose file (mode C)
 
-A service may appear in **both** files: `it25a.yml` says how it is built and published (`build`, `route`, `environment`, `secrets`), the Compose file adds what only Compose can express (`volumes`, `depends_on`, `healthcheck`, more `environment`). The two are merged; see [`examples/sveltekit-sqlite`](../examples/sveltekit-sqlite/).
+A service may appear in **both** files: `app.it25a.yml` says how it is built and published (`build`, `route`, `environment`, `secrets`), the Compose file adds what only Compose can express (`volumes`, `depends_on`, `healthcheck`, more `environment`). The two are merged; see [`examples/sveltekit-sqlite`](../examples/sveltekit-sqlite/).
+
+**Your `compose.it25a.yml` does not have to be a complete Compose file.** The platform builds one Compose file from both files on the server, so your file only holds what `app.it25a.yml` cannot say. A service of your own may therefore have neither `image` nor `build` (the platform adds the image it built, for example `app:` with only `volumes` in the SQLite example), and variables such as `${IMAGE_API}` or `${DATABASE_PASSWORD}` get their values from the platform. For the same reason `docker compose up` with this file alone does not work on your computer.
 
 The platform fills in these variables in your Compose file before it starts (`$$` gives a literal `$`; a variable without a value and without a default is an error):
 
@@ -77,7 +79,7 @@ The platform fills in these variables in your Compose file before it starts (`$$
 | `${ALIAS}` | Alias of the app |
 | `${<SECRET>}` | every secret that any service declares under `secrets` |
 
-Example `docker-compose.yml` (a complete project with a database is in [`examples/sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/)):
+Example `compose.it25a.yml` (a complete project with a database is in [`examples/sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/)):
 
 ```yaml
 services:
@@ -127,14 +129,14 @@ Names with the prefixes `IT25A_`, `GITHUB_`, `IMAGE_`, `URL_`, `HOST_`, `COMPOSE
 
 ## Validation
 
-You do not have to run anything yourself: the *Plan* stage of the deploy workflow validates `it25a.yml` on every push and pull request, before anything is built or started. Errors appear in its log and name the field that is wrong.
+You do not have to run anything yourself: the *Plan* stage of the deploy workflow validates `app.it25a.yml` on every push and pull request, before anything is built or started. Errors appear in its log and name the field that is wrong.
 For hints while typing, add the `yaml-language-server` line from the top of this page to your file (VS Code with the YAML extension by Red Hat).
 
 The check is the script `scripts/validate_manifest.py` in this repository. Only if you want to run it on your computer, clone `IT25A/deploy-workflows` and run:
 
 ```bash
 pip install -r scripts/requirements.txt
-python scripts/validate_manifest.py /path/to/your-repo/it25a.yml --repo-root /path/to/your-repo
+python scripts/validate_manifest.py /path/to/your-repo/app.it25a.yml --repo-root /path/to/your-repo
 ```
 
 ## Images

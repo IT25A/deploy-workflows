@@ -7,8 +7,8 @@ An app with its own database, a login through an OpenID Connect provider, and a 
 | File | Where | Notes |
 |---|---|---|
 | [`Dockerfile`](Dockerfile) | root | Builds the SvelteKit app; at start it runs the migrations and then the server |
-| [`it25a.yml`](it25a.yml) | root | The app, its plain settings (`environment`) and the names of its secrets |
-| [`docker-compose.yml`](docker-compose.yml) | root | The PostgreSQL database with its own name and user, health check and volume |
+| [`app.it25a.yml`](app.it25a.yml) | root | The app, its plain settings (`environment`) and the names of its secrets |
+| [`compose.it25a.yml`](compose.it25a.yml) | root | The PostgreSQL database with its own name and user, health check and volume |
 | [`.env.example`](.env.example) | root | Dummy values for development and for the build |
 | [`scripts/migrate.js`](scripts/migrate.js) | `scripts/` | Applies the SQL files from `migrations/` that are not applied yet |
 | [`migrations/001_init.sql`](migrations/001_init.sql) | `migrations/` | The first version of the schema; add `002_...sql` for later changes |
@@ -18,9 +18,9 @@ An app with its own database, a login through an OpenID Connect provider, and a 
 
 | Setting | Kind | Where it is defined |
 |---|---|---|
-| `OIDC_CLIENT_SECRET`, `AUTH_SECRET`, `POSTGRES_PASSWORD` | **secret** | Create in GitHub (repository, *Settings, Secrets and variables, Actions*), list the name under `secrets` in `it25a.yml` |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID` | plain | `environment` in `it25a.yml` (visible in the repository, fine for non-secret values) |
-| `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` | plain | `environment` in `it25a.yml`; `POSTGRES_DB` and `POSTGRES_USER` **also** in `docker-compose.yml`, where the database is created with them |
+| `OIDC_CLIENT_SECRET`, `AUTH_SECRET`, `POSTGRES_PASSWORD` | **secret** | Create in GitHub (repository, *Settings, Secrets and variables, Actions*), list the name under `secrets` in `app.it25a.yml` |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID` | plain | `environment` in `app.it25a.yml` (visible in the repository, fine for non-secret values) |
+| `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER` | plain | `environment` in `app.it25a.yml`; `POSTGRES_DB` and `POSTGRES_USER` **also** in `compose.it25a.yml`, where the database is created with them |
 | `ORIGIN` | plain, **different per deployment** | `environment` with `{{ url.app }}`, which the platform replaces with the address of production or of the preview |
 
 The variables `POSTGRES_*` have the names that the PostgreSQL image itself uses, so there is one set of names for the app and the database. Choose a password with letters and digits only, for example the output of `openssl rand -hex 24`.
@@ -103,12 +103,12 @@ export async function GET() {
 
 ## Hardening
 
-The Dockerfile runs the app as the unprivileged user `node`, and `docker-compose.yml` adds `init`, `cap_drop`, `read_only` and a grace period for stopping to the app (see the overview in [`examples/README.md`](../README.md)).
+The Dockerfile runs the app as the unprivileged user `node`, and `compose.it25a.yml` adds `init`, `cap_drop`, `read_only` and a grace period for stopping to the app (see the overview in [`examples/README.md`](../README.md)).
 
 ## Good to know
 
-- `docker-compose.yml` starts the database before the app (`depends_on` with a health check), so the migrations never meet a database that is not ready.
-- **Own database name and user:** the database `notes` and the user `notes_app` are created the first time the database starts. Change them in **both** `it25a.yml` and `docker-compose.yml` **before** the first deployment. The password is also set only then: changing the secret in GitHub later does not change the password inside an existing database.
+- `compose.it25a.yml` starts the database before the app (`depends_on` with a health check), so the migrations never meet a database that is not ready.
+- **Own database name and user:** the database `notes` and the user `notes_app` are created the first time the database starts. Change them in **both** `app.it25a.yml` and `compose.it25a.yml` **before** the first deployment. The password is also set only then: changing the secret in GitHub later does not change the password inside an existing database.
 - The data of the database is kept in the volume `db-data` and survives updates. **Each preview has its own empty database**, which the migrations fill with the schema when the preview starts. There is no backup yet.
 - **Login on previews:** the identity provider only accepts redirect addresses that are registered. A preview has its own address (`<alias>-pr<number>.apps.it25a.de`), so the login only works there if the provider allows it (for example with a wildcard). Register `https://<alias>.apps.it25a.de/auth/callback` for production and test the login there.
 - **Not needed for course-internal apps:** if only course members may use the app, keep `"production_access": "course"` in the registry (the default). The platform then does the login and passes `It25a-User` and `It25a-Name` to your app (see [guide](../../docs/getting-started.md#apps-for-course-members-only)). That replaces the whole OpenID Connect part.

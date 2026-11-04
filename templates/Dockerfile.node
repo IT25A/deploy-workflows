@@ -21,7 +21,7 @@ COPY . .
 
 # If your app writes files (a database file, uploads), create the folder here, BEFORE any "USER node" line:
 #   RUN mkdir -p /data && chown node:node /data
-# and attach a volume at that path in docker-compose.yml (see examples/react-express-sqlite).
+# and attach a volume at that path in compose.it25a.yml (see examples/react-express-sqlite).
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000

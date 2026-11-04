@@ -6,7 +6,7 @@ One repository with two folders, for example:
 my-project/
 ├── frontend/        React + Vite
 ├── backend/         Express
-├── it25a.yml
+├── app.it25a.yml
 └── .github/workflows/deploy.yml
 ```
 
@@ -16,7 +16,7 @@ The site is served at `https://<alias>.apps.it25a.de`, the backend at `https://<
 
 | File | Where | Notes |
 |---|---|---|
-| [`it25a.yml`](it25a.yml) | root | Describes the two services and the routing |
+| [`app.it25a.yml`](app.it25a.yml) | root | Describes the two services and the routing |
 | [`frontend/Dockerfile`](frontend/Dockerfile) | `frontend/` | Builds the React app and serves the files |
 | [`backend/Dockerfile`](backend/Dockerfile) | `backend/` | Starts the Express server |
 | [`.dockerignore`](../../templates/.dockerignore) | `frontend/` **and** `backend/` | Copy it from `templates/` into both folders |
@@ -79,11 +79,11 @@ Both Dockerfiles contain a `HEALTHCHECK`. The frontend answers on `/` by itself;
 
 ## Secrets
 
-Uncomment the `secrets` line in `it25a.yml` and list the names, create each secret in GitHub (repository, *Settings, Secrets and variables, Actions*), and read them in the backend with `process.env.API_KEY`. Secrets belong into the **backend**, never into the frontend.
+Uncomment the `secrets` line in `app.it25a.yml` and list the names, create each secret in GitHub (repository, *Settings, Secrets and variables, Actions*), and read them in the backend with `process.env.API_KEY`. Secrets belong into the **backend**, never into the frontend.
 
 ## Variant: separate addresses instead of `/api`
 
-If you prefer `https://api-<alias>.apps.it25a.de` for the backend, use this `it25a.yml`. (Keep the `/api` prefix in the routes, or change the health check path in `backend/Dockerfile` when you remove it.) The frontend then needs to know the address, which is passed in when it is built:
+If you prefer `https://api-<alias>.apps.it25a.de` for the backend, use this `app.it25a.yml`. (Keep the `/api` prefix in the routes, or change the health check path in `backend/Dockerfile` when you remove it.) The frontend then needs to know the address, which is passed in when it is built:
 
 ```yaml
 version: 1

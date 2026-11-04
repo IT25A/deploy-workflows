@@ -58,7 +58,7 @@ static void handle(int client) {
     } else if (path == "/health") {
         reply = respond(200, "OK", "text/plain", "ok\n");
     } else if (path == "/") {
-        std::string greeting = env("GREETING", "Hello from C++");  // a plain setting from it25a.yml
+        std::string greeting = env("GREETING", "Hello from C++");  // a plain setting from app.it25a.yml
         reply = respond(200, "OK", "text/html; charset=utf-8", "<h1>" + greeting + "</h1>\n");
     } else {
         reply = respond(404, "Not Found", "text/plain", "Not found.\n");

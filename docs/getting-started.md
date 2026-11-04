@@ -22,11 +22,11 @@ you push to GitHub ──► GitHub builds your app into a "container image" ─
 | `.dockerignore` | root of your repository | Recommended. Keeps unwanted files out of the build. |
 | `.github/workflows/deploy.yml` | your repository | **Always.** Copy it, do not change it. |
 | Entry in `apps.json` | repository [`IT25A/apps-registry`](https://github.com/IT25A/apps-registry) | **Always.** A maintainer approves it. |
-| `it25a.yml` | root of your repository | Only if: your app has **several parts** (for example frontend and backend), uses **a port other than 3000**, or needs **secrets** (passwords, API keys). |
-| `docker-compose.yml` | root of your repository | Only if you need a **database in its own container** (PostgreSQL, Redis, ...) **or files that must survive updates**, for example a **SQLite file** or uploaded files (see step 1). |
+| `app.it25a.yml` (or `.yaml`) | root of your repository | Only if: your app has **several parts** (for example frontend and backend), uses **a port other than 3000**, or needs **secrets** (passwords, API keys). |
+| `compose.it25a.yml` | root of your repository | Only if you need a **database in its own container** (PostgreSQL, Redis, ...) **or files that must survive updates**, for example a **SQLite file** or uploaded files (see step 1). |
 | GitHub secrets | repository settings | Only if the app has passwords or API keys. |
 
-You do **not** need: a `docker-compose.yml` for an app that keeps nothing on disk, a `.env` file with real values in the repository, port mappings, or anything on a server.
+You do **not** need: a `compose.it25a.yml` for an app that keeps nothing on disk, a `.env` file with real values in the repository, port mappings, or anything on a server.
 
 ## Step 0: Check your project
 
@@ -41,12 +41,14 @@ You do **not** need: a `docker-compose.yml` for an app that keeps nothing on dis
 | Your project | What you add |
 |---|---|
 | **One app** (one repository, one start command, for example a SvelteKit app or an Express app that also serves its pages) | `Dockerfile`. Nothing else. Frontend only: [`react-only`](../examples/react-only/) |
-| **One app with secrets** or a port other than 3000 | `Dockerfile` and a short `it25a.yml` (step 5). C++ or another language: [`cpp`](../examples/cpp/) |
-| **Frontend and backend** in one repository | One `Dockerfile` per part, and an `it25a.yml`. Complete example: [`react-express`](../examples/react-express/) |
-| **SQLite** (or any other file the app writes and that must stay) | The above, **plus a `docker-compose.yml`** that attaches a volume. Even though the database is "built into" your app. Complete examples: [`sveltekit-sqlite`](../examples/sveltekit-sqlite/), [`react-express-sqlite`](../examples/react-express-sqlite/) |
-| **A database of its own** (PostgreSQL, Redis, ...) | The above, plus a `docker-compose.yml` that starts the database. Complete examples: [`sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/) (PostgreSQL, secrets, login), [`react-express-postgres`](../examples/react-express-postgres/) (frontend, backend and database) |
+| **One app with secrets** or a port other than 3000 | `Dockerfile` and a short `app.it25a.yml` (step 5). C++ or another language: [`cpp`](../examples/cpp/) |
+| **Frontend and backend** in one repository | One `Dockerfile` per part, and an `app.it25a.yml`. Complete example: [`react-express`](../examples/react-express/) |
+| **SQLite** (or any other file the app writes and that must stay) | The above, **plus a `compose.it25a.yml`** that attaches a volume. Even though the database is "built into" your app. Complete examples: [`sveltekit-sqlite`](../examples/sveltekit-sqlite/), [`react-express-sqlite`](../examples/react-express-sqlite/) |
+| **A database of its own** (PostgreSQL, Redis, ...) | The above, plus a `compose.it25a.yml` that starts the database. Complete examples: [`sveltekit-postgres-oidc`](../examples/sveltekit-postgres-oidc/) (PostgreSQL, secrets, login), [`react-express-postgres`](../examples/react-express-postgres/) (frontend, backend and database) |
 
-> **Why does SQLite need a `docker-compose.yml`?** Every update starts a **new container** and throws the old one away, together with every file that the app wrote inside it. A SQLite database is just a file, so without more it would be empty after each update. The `docker-compose.yml` attaches a **volume**: a folder that lives outside the container and survives updates, restarts and new versions. Your app stores the database file there. The same applies to uploaded files. A real database server such as PostgreSQL runs in its own container and needs such a volume too.
+> **Why does SQLite need a `compose.it25a.yml`?** Every update starts a **new container** and throws the old one away, together with every file that the app wrote inside it. A SQLite database is just a file, so without more it would be empty after each update. The `compose.it25a.yml` attaches a **volume**: a folder that lives outside the container and survives updates, restarts and new versions. Your app stores the database file there. The same applies to uploaded files. A real database server such as PostgreSQL runs in its own container and needs such a volume too.
+
+> **Your `compose.it25a.yml` is not a complete Compose file.** The platform merges it with `app.it25a.yml` into one Compose file on the server. That is why a service of your own may have only `volumes` and no `image` or `build` in it: the platform adds the image it built. Use the example files as they are. `docker compose up` does not work with this file alone on your computer, and that is fine.
 
 Most projects start with the first row. **Every example is a complete set of files that you can copy** and adapt: see the [overview of the examples](../examples/README.md). Read on; the other rows only change step 2 and step 5.
 
@@ -118,7 +120,7 @@ Then open `http://localhost:3000`. If you do not have Docker, skip this: the pul
 | Build fails at `npm ci` | `package-lock.json` is missing in Git, or it does not match `package.json`. Run `npm install` locally and commit the lock file. |
 | `npm start` is missing | Add `"start": "node index.js"` (your start file) under `scripts` in `package.json`. |
 | The Dockerfile is not found | The file name is spelled wrong (`dockerfile`, `Dockerfile.txt`) or it is not in the root. |
-| The app cannot write a file: `EACCES`, `Permission denied`, `SQLITE_CANTOPEN`, the container is "unhealthy" | The container runs as the unprivileged user `node`, who may only write to folders that belong to `node`. Create the folder in the Dockerfile **before** `USER node` (`RUN mkdir -p /data && chown node:node /data`) and attach a volume at that path in `docker-compose.yml`. See [`react-express-sqlite`](../examples/react-express-sqlite/README.md). |
+| The app cannot write a file: `EACCES`, `Permission denied`, `SQLITE_CANTOPEN`, the container is "unhealthy" | The container runs as the unprivileged user `node`, who may only write to folders that belong to `node`. Create the folder in the Dockerfile **before** `USER node` (`RUN mkdir -p /data && chown node:node /data`) and attach a volume at that path in `compose.it25a.yml`. See [`react-express-sqlite`](../examples/react-express-sqlite/README.md). |
 | Build fails at `mkdir` with "Permission denied" | The line stands **after** `USER node`. From there on every command runs as `node`. Move it above `USER node`. |
 | The app needs a `.env` file | Files like `.env` are not part of the build. Read the values from environment variables and use secrets (step 5). |
 | SvelteKit: the build fails because variables from `src/env.ts` are missing | SvelteKit 3 checks the variables when it builds. Commit a `.env.example` with harmless dummy values and let the Dockerfile copy it for the build, as in the [SvelteKit examples](../examples/sveltekit-sqlite/README.md). |
@@ -157,11 +159,11 @@ The workflow is the part that builds and publishes on every push. It is the same
 1. In your repository: *Add file, Create new file*, name it **`.github/workflows/deploy.yml`** (typing the slashes creates the folders).
 2. Paste the content of [`examples/caller-deploy.yml`](../examples/caller-deploy.yml) and commit it. Do not change anything.
 
-## Step 5: `it25a.yml` and secrets (only if needed)
+## Step 5: `app.it25a.yml` and secrets (only if needed)
 
 Skip this step if your app is **one container** (one `Dockerfile` in the root of the repository) that listens on port 3000 and needs neither secrets nor settings.
 
-You need an `it25a.yml` as soon as one of these applies:
+You need an `app.it25a.yml` as soon as one of these applies:
 
 - the app listens on another port than 3000
 - the app has **more than one part**, for example a frontend and a backend (also without secrets)
@@ -172,7 +174,7 @@ You need an `it25a.yml` as soon as one of these applies:
 **Secrets** are values that must not be in Git: database passwords, API keys, session secrets.
 
 1. In your repository: *Settings, Secrets and variables, Actions, New repository secret*. Use a **repository secret**, not an environment secret.
-2. Create a file `it25a.yml` in the root of your repository. For one app with a secret and a setting it looks like this:
+2. Create a file `app.it25a.yml` in the root of your repository. For one app with a secret and a setting it looks like this:
 
    ```yaml
    version: 1
@@ -193,7 +195,7 @@ You need an `it25a.yml` as soon as one of these applies:
    - `environment` sets variables that are **not secret**. Your app reads them like secrets, as environment variables at runtime. They are stored in Git, so everyone who can read the repository sees them.
    - `{{ url.app }}` is a placeholder. The platform fills in the full address of the running version: `https://myapp.apps.it25a.de` in production, `https://myapp-pr7.apps.it25a.de` in the preview of pull request 7. Put placeholders in quotes. More about them in [`manifest.md`](manifest.md#placeholders).
    - `secrets` lists the **names** of your GitHub secrets. Only listed secrets are passed on.
-3. **Store only real secrets.** Names and settings that are not secret (database name, database user, port, URLs) belong in `environment` in `it25a.yml`, not in GitHub secrets. GitHub hides the value of every secret wherever it appears, also inside the address of your app. If a secret is, for example, `x-poll`, the address `https://x-poll-pr1.apps.it25a.de` is shown as `https://***-pr1.apps.it25a.de`, and GitHub then does not attach it to the deployment ("Skip setting environment url as environment 'preview' may contain secret"). The app still runs, but the link to the preview is missing in the pull request. So never use a secret value that is part of your address: the alias, `app`, `apps`, `it25a` or `pr`.
+3. **Store only real secrets.** Names and settings that are not secret (database name, database user, port, URLs) belong in `environment` in `app.it25a.yml`, not in GitHub secrets. GitHub hides the value of every secret wherever it appears, also inside the address of your app. If a secret is, for example, `x-poll`, the address `https://x-poll-pr1.apps.it25a.de` is shown as `https://***-pr1.apps.it25a.de`, and GitHub then does not attach it to the deployment ("Skip setting environment url as environment 'preview' may contain secret"). The app still runs, but the link to the preview is missing in the pull request. So never use a secret value that is part of your address: the alias, `app`, `apps`, `it25a` or `pr`.
 4. Your app reads each secret as an environment variable **at runtime** (Node.js: `process.env.SESSION_SECRET`; SvelteKit 3: declared in `src/env.ts` and imported from `$app/env/private`, see the [SvelteKit examples](../examples/sveltekit-sqlite/README.md); older SvelteKit: `$env/dynamic/private`).
 
 Several parts or a database? Start from an [example](../examples/README.md) and read [`manifest.md`](manifest.md).
@@ -227,13 +229,13 @@ Every message appears in the log of the **Deploy** job (Actions tab, click the r
 | `Only public repositories` | The repository is private | Make it public |
 | `denied` / `unauthorized` while pulling | The image is still private | Step 6, point 3 |
 | `Preview environments are disabled` | `previews` is `false` in the registry | Change it there, or merge to `main` |
-| An error in **Plan** about `it25a.yml` or the Compose file | Something in your configuration is not allowed | Read the message; it names the line. Fix the file and push again |
+| An error in **Plan** about `app.it25a.yml` or the Compose file | Something in your configuration is not allowed | Read the message; it names the line. Fix the file and push again |
 | `unhealthy`, or `Restarting` in the container list | The app does not start, or it does not answer the route that the `HEALTHCHECK` of the Dockerfile asks (for example `/health`) | Read the log lines **below** the message: those that start with the service name (for example `api-1  \|`) are the output of your container and show the real error. If the app only lacks the route, add it (see the example's README) or remove the `HEALTHCHECK` lines. The old version keeps running meanwhile |
 | `Skip setting environment url as environment 'preview' may contain secret` (in *Complete job*), or `***` inside an address | One of your GitHub secrets has a value that is part of the address, for example the alias | Do not store that value as a secret (see step 5), or choose another value, and push again |
 | The **Build** stage fails | The Dockerfile or the app build is broken | Read the log of the failing step; it is the same output as `docker build` on your computer |
 
-**You do not have to check your configuration locally.** The *Plan* stage validates `it25a.yml` on every push and pull request before anything is built or started, and the registry pull request has its own check.
-If you use VS Code with the YAML extension by Red Hat, add this line at the top of `it25a.yml` for live hints while typing:
+**You do not have to check your configuration locally.** The *Plan* stage validates `app.it25a.yml` on every push and pull request before anything is built or started, and the registry pull request has its own check.
+If you use VS Code with the YAML extension by Red Hat, add this line at the top of `app.it25a.yml` for live hints while typing:
 `# yaml-language-server: $schema=https://raw.githubusercontent.com/IT25A/deploy-workflows/main/schema/it25a.schema.json`
 
 A failed **first** deployment leaves nothing behind, so you can simply fix and push again.
@@ -263,7 +265,7 @@ Trust these headers **only** if the app is restricted to course members. On a pu
 | Resources per container | 512 MB memory, 0.5 CPU, 256 processes |
 | Services per app | 10 |
 | Previews per app | 3 open at the same time, 14 days lifetime |
-| Databases | Allowed (with `docker-compose.yml`, approved images such as `postgres`); the data lives in volumes on the server |
+| Databases | Allowed (with `compose.it25a.yml`, approved images such as `postgres`); the data lives in volumes on the server |
 
 There are **no database backups yet**. Keep your own copy of data that you cannot recreate.
 Apps are for course projects. Do not store personal data of third parties.
@@ -274,13 +276,13 @@ Apps are for course projects. Do not store personal data of third parties.
 - [ ] `Dockerfile` and `.dockerignore` are in the root
 - [ ] `.github/workflows/deploy.yml` exists
 - [ ] Registry pull request is merged
-- [ ] Secrets are created and listed in `it25a.yml` (if needed)
+- [ ] Secrets are created and listed in `app.it25a.yml` (if needed)
 - [ ] Image is set to public after the first build
 - [ ] The address from the *Deploy* log opens
 
 ## Further reading
 
 - [`templates/`](../templates/): Dockerfiles for common frameworks
-- [`manifest.md`](manifest.md): all fields of `it25a.yml`, routing, placeholders, Compose variables
+- [`manifest.md`](manifest.md): all fields of `app.it25a.yml`, routing, placeholders, Compose variables
 - [`examples/`](../examples/README.md): complete projects (React, React and Express, with PostgreSQL, SvelteKit with SQLite or PostgreSQL and login, C++)
 - [`apps-registry`](https://github.com/IT25A/apps-registry): registry fields and rules

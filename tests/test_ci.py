@@ -46,7 +46,7 @@ def make_repo(tmp_path: Path, manifest: str | None = MANIFEST) -> Path:
     (repo / "frontend" / "Dockerfile.prod").write_text("FROM scratch\n")
     (repo / "backend" / "Dockerfile").write_text("FROM scratch\n")
     if manifest is not None:
-        (repo / "it25a.yml").write_text(manifest)
+        (repo / "app.it25a.yml").write_text(manifest)
     return repo
 
 
@@ -92,11 +92,34 @@ def test_plan_zero_config(stub, tmp_path):
     assert include[0]["file"] == "Dockerfile" and include[0]["context"] == "."
 
 
+@pytest.mark.parametrize("old", ["it25a.yml", "it25a.yaml"])
+def test_plan_asks_to_rename_the_old_manifest(stub, tmp_path, capsys, old):
+    repo = make_repo(tmp_path, manifest=None)
+    (repo / old).write_text(MANIFEST)
+    assert run("plan", "--repo-root", str(repo), "--api-url", stub.url) == 1
+    assert f"rename {old} to app.it25a.yml" in capsys.readouterr().out
+
+
+def test_plan_accepts_the_yaml_extension(stub, tmp_path):
+    repo = make_repo(tmp_path, manifest=None)
+    (repo / "app.it25a.yaml").write_text(MANIFEST)
+    stub.reply("POST", "/v1/resolve", (200, RESOLVE))
+    assert run("plan", "--repo-root", str(repo), "--api-url", stub.url) == 0
+    assert stub.requests[0][2] == {"manifest": MANIFEST}
+
+
+def test_plan_refuses_both_extensions(stub, tmp_path, capsys):
+    repo = make_repo(tmp_path)
+    (repo / "app.it25a.yaml").write_text(MANIFEST)
+    assert run("plan", "--repo-root", str(repo), "--api-url", stub.url) == 1
+    assert "Both app.it25a.yml and app.it25a.yaml exist" in capsys.readouterr().out
+
+
 def test_plan_without_manifest_or_dockerfile(stub, tmp_path, capsys):
     repo = tmp_path / "empty"
     repo.mkdir()
     assert run("plan", "--repo-root", str(repo), "--api-url", stub.url) == 1
-    assert "Neither an it25a.yml nor a Dockerfile" in capsys.readouterr().out
+    assert "Neither an app.it25a.yml nor a Dockerfile" in capsys.readouterr().out
 
 
 def test_plan_reports_invalid_manifest_before_calling_the_deployer(stub, tmp_path, capsys):
@@ -178,8 +201,8 @@ def test_deploy_shows_validation_errors(stub, tmp_path, monkeypatch, capsys):
 
 def test_deploy_sends_compose_file(stub, tmp_path, monkeypatch):
     repo = make_repo(tmp_path)
-    (repo / "docker-compose.yml").write_text("services: {}\n")
-    deploy_env(monkeypatch, IT25A_COMPOSE_PATH="docker-compose.yml")
+    (repo / "compose.it25a.yml").write_text("services: {}\n")
+    deploy_env(monkeypatch, IT25A_COMPOSE_PATH="compose.it25a.yml")
     stub.reply("POST", "/v1/deploy", (202, {"job_id": "j", "project": "p", "urls": {}}))
     stub.reply("GET", "/v1/jobs/j", (200, {"status": "succeeded", "done": True, "logs": [], "next": 0}))
     assert run("deploy", "--repo-root", str(repo), "--api-url", stub.url) == 0

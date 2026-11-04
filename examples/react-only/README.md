@@ -9,7 +9,7 @@ Your project is a website that is built to static files and talks to no backend 
 | [`Dockerfile`](Dockerfile) | root of the repository | Builds the site with `npm run build` and serves the folder `dist` |
 | [`.dockerignore`](../../templates/.dockerignore) | root of the repository | Copy it from `templates/` |
 
-You do **not** need an `it25a.yml`: the platform starts one service on port 3000 and publishes it at `https://<alias>.apps.it25a.de`.
+You do **not** need an `app.it25a.yml`: the platform starts one service on port 3000 and publishes it at `https://<alias>.apps.it25a.de`.
 
 ## Check before you push
 
@@ -20,5 +20,5 @@ You do **not** need an `it25a.yml`: the platform starts one service on port 3000
 ## Good to know
 
 - Everything in a frontend is **public**. Never put passwords or API keys into the code or into `VITE_` variables: they end up in the files that every visitor downloads.
-- Variables that start with `VITE_` are fixed when the site is built. To pass a value, add it to the Dockerfile as `ARG` (see the comment in it) and to `build.args` in an `it25a.yml`.
+- Variables that start with `VITE_` are fixed when the site is built. To pass a value, add it to the Dockerfile as `ARG` (see the comment in it) and to `build.args` in an `app.it25a.yml`.
 - You want a backend later? Continue with [`react-express/`](../react-express/).

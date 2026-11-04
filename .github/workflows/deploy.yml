@@ -154,7 +154,7 @@ jobs:
           IT25A_IMAGES: ${{ needs.plan.outputs.images }}
           IT25A_SECRET_NAMES: ${{ needs.plan.outputs.secrets }}
           IT25A_COMPOSE_PATH: ${{ needs.plan.outputs.compose }}
-          # The script passes on only the secrets that it25a.yml declares.
+          # The script passes on only the secrets that app.it25a.yml declares.
           IT25A_SECRETS: ${{ toJSON(secrets) }}
         run: python3 .it25a-workflows/scripts/it25a_ci.py deploy
 

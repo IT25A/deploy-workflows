@@ -174,29 +174,49 @@ def follow_job(api: Api, job_id: str, action: str) -> dict:
 # ----------------------------------------------------------------------------- commands
 
 
+MANIFEST_NAMES = ("app.it25a.yml", "app.it25a.yaml")
+OLD_MANIFEST_NAMES = ("it25a.yml", "it25a.yaml")
+
+
+def find_manifest(root: Path) -> Path:
+    """Path of the manifest: `app.it25a.yml` or `app.it25a.yaml`, but not both.
+
+    A repository that still has the old file name gets a clear error instead of silently falling back to zero-config mode.
+    """
+    found = [name for name in MANIFEST_NAMES if (root / name).is_file()]
+    if len(found) > 1:
+        raise CiError(f"Both {found[0]} and {found[1]} exist. Keep only one of them.")
+    if found:
+        return root / found[0]
+    old = [name for name in OLD_MANIFEST_NAMES if (root / name).is_file()]
+    if old:
+        raise CiError(f"The manifest was renamed: rename {old[0]} to {MANIFEST_NAMES[0]} (or {MANIFEST_NAMES[1]}).")
+    return root / MANIFEST_NAMES[0]
+
+
 def cmd_plan(args: argparse.Namespace) -> None:
     import yaml  # only needed here
 
     from validate_manifest import validate
 
     root = Path(args.repo_root).resolve()
-    manifest_path = root / "it25a.yml"
+    manifest_path = find_manifest(root)
     if manifest_path.is_file():
         errors, warnings = validate(manifest_path, root)
         for warning in warnings:
             annotate("warning", warning)
         if errors:
-            raise CiError("it25a.yml is invalid:\n" + "\n".join(f"- {e}" for e in errors))
+            raise CiError("app.it25a.yml is invalid:\n" + "\n".join(f"- {e}" for e in errors))
         text: str | None = manifest_path.read_text(encoding="utf-8")
         if len(text.encode("utf-8")) > MAX_MANIFEST_BYTES:
-            raise CiError("it25a.yml is larger than 64 KiB.")
+            raise CiError("app.it25a.yml is larger than 64 KiB.")
         data = yaml.safe_load(text)
     elif (root / "Dockerfile").is_file():
-        print("No it25a.yml found: using zero-config mode (Dockerfile in the root, port 3000).")
+        print("No app.it25a.yml found: using zero-config mode (Dockerfile in the root, port 3000).")
         text, data = None, ZERO_CONFIG
     else:
         raise CiError(
-            "Neither an it25a.yml nor a Dockerfile was found in the repository root. "
+            "Neither an app.it25a.yml nor a Dockerfile was found in the repository root. "
             "Add one of them (see docs/manifest.md in deploy-workflows)."
         )
 
@@ -265,13 +285,13 @@ def cmd_deploy(args: argparse.Namespace) -> None:
     missing = [name for name in declared if not available.get(name)]
     if missing:
         raise CiError(
-            "These secrets are declared in it25a.yml but are empty or missing in GitHub: "
+            "These secrets are declared in app.it25a.yml but are empty or missing in GitHub: "
             + ", ".join(missing)
             + ". Create them under Settings > Secrets and variables > Actions (repository secrets)."
         )
     secrets = {name: available[name] for name in declared}
 
-    manifest_path = root / "it25a.yml"
+    manifest_path = find_manifest(root)
     manifest_text = manifest_path.read_text(encoding="utf-8") if manifest_path.is_file() else None
 
     compose_text = None

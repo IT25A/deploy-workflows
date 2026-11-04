@@ -3,7 +3,7 @@
 #   https://<alias>.apps.it25a.de        -> frontend
 #   https://<alias>.apps.it25a.de/api    -> backend (talks to the database)
 version: 1
-compose: docker-compose.yml          # defines the database, see docker-compose.yml
+compose: compose.it25a.yml          # defines the database, see compose.it25a.yml
 services:
   web:
     build: ./frontend
@@ -13,9 +13,9 @@ services:
     build: ./backend
     port: 3000
     route: { host: "@", path: /api }
-    # Plain settings. DB_NAME and DB_USER must be the same as POSTGRES_DB and POSTGRES_USER in docker-compose.yml.
+    # Plain settings. DB_NAME and DB_USER must be the same as POSTGRES_DB and POSTGRES_USER in compose.it25a.yml.
     environment:
-      DB_HOST: db                    # the name of the database service in docker-compose.yml
+      DB_HOST: db                    # the name of the database service in compose.it25a.yml
       DB_PORT: "5432"                # always in quotes
       DB_NAME: shop
       DB_USER: shop_app

@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from validate_manifest import validate  # noqa: E402
 
-EXAMPLES = sorted(path.parent for path in (ROOT / "examples").glob("*/it25a.yml"))
+EXAMPLES = sorted(path.parent for path in (ROOT / "examples").glob("*/app.it25a.yml"))
 
 
 def test_examples_exist():
@@ -18,7 +18,7 @@ def test_examples_exist():
 
 @pytest.mark.parametrize("folder", EXAMPLES, ids=lambda p: p.name)
 def test_example_manifest_is_valid(folder):
-    errors, _warnings = validate(folder / "it25a.yml", folder)
+    errors, _warnings = validate(folder / "app.it25a.yml", folder)
     assert errors == []
 
 

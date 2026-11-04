@@ -1,5 +1,5 @@
 # Save as .github/workflows/deploy.yml in your repository. Nothing else is needed besides an
-# entry in IT25A/apps-registry and (optionally) an it25a.yml.
+# entry in IT25A/apps-registry and (optionally) an app.it25a.yml.
 name: Deploy
 
 on:
@@ -24,4 +24,4 @@ permissions:
 jobs:
   deploy:
     uses: IT25A/deploy-workflows/.github/workflows/deploy.yml@v1
-    secrets: inherit    # the workflow passes on only the secrets declared in it25a.yml
+    secrets: inherit    # the workflow passes on only the secrets declared in app.it25a.yml

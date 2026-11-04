@@ -1,14 +1,14 @@
 # React, Express and SQLite
 
 A React frontend and an Express backend in one repository. The backend keeps its data in an **SQLite file**.
-SQLite needs a `docker-compose.yml` although the database is "built into" your app: every update starts a new container and throws the old one away with all files inside. The file therefore lies in a *volume*, a folder that Docker keeps outside the container, and survives updates, restarts and new versions.
+SQLite needs a `compose.it25a.yml` although the database is "built into" your app: every update starts a new container and throws the old one away with all files inside. The file therefore lies in a *volume*, a folder that Docker keeps outside the container, and survives updates, restarts and new versions.
 
 ```
 my-project/
 ├── frontend/        React + Vite
 ├── backend/         Express + better-sqlite3
-├── it25a.yml
-├── docker-compose.yml
+├── app.it25a.yml
+├── compose.it25a.yml
 └── .github/workflows/deploy.yml
 ```
 
@@ -18,8 +18,8 @@ The site is served at `https://<alias>.apps.it25a.de`, the backend at `https://<
 
 | File | Where | Notes |
 |---|---|---|
-| [`it25a.yml`](it25a.yml) | root | The two services, routing and the path of the database file (`DB_PATH`) |
-| [`docker-compose.yml`](docker-compose.yml) | root | Attaches the volume `db-data` at `/data` (and hardens the backend) |
+| [`app.it25a.yml`](app.it25a.yml) | root | The two services, routing and the path of the database file (`DB_PATH`) |
+| [`compose.it25a.yml`](compose.it25a.yml) | root | Attaches the volume `db-data` at `/data` (and hardens the backend) |
 | [`backend/Dockerfile`](backend/Dockerfile) | `backend/` | Starts the Express server; creates `/data` for the unprivileged user |
 | [`frontend/Dockerfile`](frontend/Dockerfile) | `frontend/` | Builds the React app and serves the files |
 | [`.dockerignore`](../../templates/.dockerignore) | `frontend/` **and** `backend/` | Copy it from `templates/` into both folders (it also keeps local `*.sqlite` files out of the image) |
@@ -73,4 +73,4 @@ The log of the *Deploy* job then shows `SQLITE_CANTOPEN`, `EACCES` or "permissio
 - **Every preview has its own, empty database**, deleted when the pull request is closed. Production data is never touched by a pull request.
 - Production data stays when you deploy a new version. There is **no backup** yet: download or export what you cannot recreate.
 - SQLite is meant for one instance of the backend. That is exactly what the platform runs.
-- If the path of the file changes, change `DB_PATH`, the `mkdir`/`chown` in the Dockerfile and the volume path in `docker-compose.yml` together.
+- If the path of the file changes, change `DB_PATH`, the `mkdir`/`chown` in the Dockerfile and the volume path in `compose.it25a.yml` together.

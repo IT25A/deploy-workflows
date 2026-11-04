@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 
 # Only needed if the frontend talks to a separate backend: the address is baked into the files here.
-# The platform fills it in through "build.args" in it25a.yml (see examples/react-express/README.md).
+# The platform fills it in through "build.args" in app.it25a.yml (see examples/react-express/README.md).
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
